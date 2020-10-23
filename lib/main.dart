@@ -36,51 +36,71 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> _todos = [];
   List<String> _done = [];
 
-  addTODO(String value) {
+  FocusNode _focus_node;
+
+  @override
+  initState() {
+    super.initState();
+    _focus_node = new FocusNode();
+  }
+
+  @override
+  dispse() {
+    _focus_node.dispose();
+    super.dispose();
+  }
+
+  addTODO() {
     setState(() {
-      Navigator.pop(context);
-      _text_controller.clear();
-      _todos.insert(0, value);
+      if (_text_controller.text.length > 0) {
+        Navigator.pop(context);
+        _todos.insert(0, _text_controller.text);
+        _text_controller.clear();
+      } else {
+        _focus_node.requestFocus();
+      }
     });
   }
 
-  showDialogBoxWithString(BuildContext context, String value) async{
+  showDialogBoxForAddingTODO(BuildContext context) async {
+
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        return RawKeyboardListener(
-          focusNode: FocusNode(),
-          autofocus: true,
-          onKey: (RawKeyEvent event) {
-            if (event.isKeyPressed(LogicalKeyboardKey.enter))
-              addTODO(value);
-          },
-          child: AlertDialog(
-            content: Text(
-              'Are you sure you want to add "$value" to your TODOs?'
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _text_controller.clear();
-                },
-                child: const Text(
-                  "No",
-                  style: TextStyle(color: Colors.red),
-                ),
+        var width = MediaQuery.of(context).size.width;
+        return AlertDialog(
+          content: Container(
+            width: width > 600.0 ? 600.0 : width,
+            child: TextField(
+              autofocus: true,
+              focusNode: _focus_node,
+              controller: _text_controller,
+              onSubmitted: (String _) {addTODO();},
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: "Enter a TODO item",
               ),
-              TextButton(
-                onPressed: () {addTODO(value);},
-                child: const Text(
-                  "Yes",
-                  style: TextStyle(color: Colors.green),
-                ),
-              )
-            ],
+            ),
           ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _text_controller.clear();
+              },
+              child: const Text(
+                "CANCEL",
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {addTODO();},
+              child: const Text(
+                "ADD TODO",
+              ),
+            )
+          ],
         );
-      },
+      }
     );
   }
 
@@ -92,17 +112,6 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
-            TextField(
-              controller: _text_controller,
-              onSubmitted: (String value) async {
-                if (value.length > 0)
-                  showDialogBoxWithString(context, value);
-              },
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "Enter a TODO item",
-              ),
-            ),
             Text(
               "TODO:",
               style: Theme.of(context).textTheme.headline3,
@@ -120,7 +129,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       // TODO: make this one sexier to look at
                       children: <Widget>[
                         Expanded(child: Text(val)),
-                        TextButton(
+                        ElevatedButton(
                           onPressed: () {
                             setState(() {
                               _todos.removeAt(key);
@@ -166,7 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           },
                           child: const Icon(Icons.restore),
                         ),
-                        TextButton(
+                        ElevatedButton(
                           onPressed: () {
                             setState(() {
                               _done.removeAt(key);
@@ -182,6 +191,13 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () {
+          showDialogBoxForAddingTODO(context);
+        },
+
       ),
     );
   }
