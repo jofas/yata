@@ -122,6 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 controller: _scroll_controller,
                 isAlwaysShown: true,
                 // TODO: to builder
+                //       done in its own page (buttomnavigationbar)
                 child: ListView(
                   controller: _scroll_controller,
                   children: _todos.asMap().map((int key, String val) {
@@ -197,7 +198,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: () {
           showDialogBoxForAddingTODO(context);
         },
-
       ),
     );
   }
