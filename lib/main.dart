@@ -40,50 +40,48 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       Navigator.pop(context);
       _text_controller.clear();
-      _todos.add(value);
+      _todos.insert(0, value);
     });
   }
 
-  showDialogBoxWithString(BuildContext context) {
-    return (String value) async {
-      await showDialog<void>(
-        context: context,
-        builder: (BuildContext context) {
-          return RawKeyboardListener(
-            focusNode: FocusNode(),
-            autofocus: true,
-            onKey: (RawKeyEvent event) {
-              if (event.isKeyPressed(LogicalKeyboardKey.enter))
-                addTODO(value);
-            },
-            child: AlertDialog(
-              content: Text(
-                'Are you sure you want to add "$value" to your TODOs?'
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _text_controller.clear();
-                  },
-                  child: const Text(
-                    "No",
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {addTODO(value);},
-                  child: const Text(
-                    "Yes",
-                    style: TextStyle(color: Colors.green),
-                  ),
-                )
-              ],
+  showDialogBoxWithString(BuildContext context, String value) async{
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return RawKeyboardListener(
+          focusNode: FocusNode(),
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event.isKeyPressed(LogicalKeyboardKey.enter))
+              addTODO(value);
+          },
+          child: AlertDialog(
+            content: Text(
+              'Are you sure you want to add "$value" to your TODOs?'
             ),
-          );
-        },
-      );
-    };
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _text_controller.clear();
+                },
+                child: const Text(
+                  "No",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              TextButton(
+                onPressed: () {addTODO(value);},
+                child: const Text(
+                  "Yes",
+                  style: TextStyle(color: Colors.green),
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -96,7 +94,10 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             TextField(
               controller: _text_controller,
-              onSubmitted: showDialogBoxWithString(context),
+              onSubmitted: (String value) async {
+                if (value.length > 0)
+                  showDialogBoxWithString(context, value);
+              },
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: "Enter a TODO item",
@@ -116,17 +117,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   controller: _scroll_controller,
                   children: _todos.asMap().map((int key, String val) {
                     return MapEntry(key, Row(
-                      // TODO: make this one sexier to look at and
+                      // TODO: make this one sexier to look at
                       children: <Widget>[
-                        Text(val),
+                        Expanded(child: Text(val)),
                         TextButton(
                           onPressed: () {
                             setState(() {
                               _todos.removeAt(key);
-                              _done.add(val);
+                              _done.insert(0, val);
                             });
                           },
-                          child: Text("Done"),
+                          child: const Icon(Icons.check),
                         ),
                         TextButton(
                           onPressed: () {
@@ -134,7 +135,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               _todos.removeAt(key);
                             });
                           },
-                          child: Text("Delete"),
+                          child: const Icon(Icons.clear),
                         ),
                       ],
                     ));
@@ -142,7 +143,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            Text("DONE:",
+            Text(
+              "DONE:",
               style: Theme.of(context).textTheme.headline3,
             ),
             Expanded(
@@ -154,15 +156,15 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: _done.asMap().map((int key, String val) {
                     return MapEntry(key, Row(
                       children: <Widget>[
-                        Text(val),
+                        Expanded(child: Text(val)),
                         TextButton(
                           onPressed: () {
                             setState(() {
                               _done.removeAt(key);
-                              _todos.add(val);
+                              _todos.insert(0, val);
                             });
                           },
-                          child: const Text("Undo"),
+                          child: const Icon(Icons.restore),
                         ),
                         TextButton(
                           onPressed: () {
@@ -170,7 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               _done.removeAt(key);
                             });
                           },
-                          child: const Text("Delete"),
+                          child: const Icon(Icons.clear),
                         ),
                       ],
                     ));
