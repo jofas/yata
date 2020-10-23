@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(MyApp());
@@ -33,41 +34,50 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> _todos = [];
   List<String> _done = [];
 
+  addTODO(String value) {
+    setState(() {
+      Navigator.pop(context);
+      _text_controller.clear();
+      _todos.add(value);
+    });
+  }
+
   showDialogBoxWithString(BuildContext context) {
     return (String value) async {
-      // TODO: add keyboard listener (on enter: press Yes button
       await showDialog<void>(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            content: Text(
-              'Are you sure you want to add "$value" to your TODOs?'
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _text_controller.clear();
-                },
-                child: const Text(
-                  "No",
-                  style: TextStyle(color: Colors.red),
-                ),
+          return RawKeyboardListener(
+            focusNode: FocusNode(),
+            autofocus: true,
+            onKey: (RawKeyEvent event) {
+              if (event.isKeyPressed(LogicalKeyboardKey.enter))
+                addTODO(value);
+            },
+            child: AlertDialog(
+              content: Text(
+                'Are you sure you want to add "$value" to your TODOs?'
               ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
                     Navigator.pop(context);
                     _text_controller.clear();
-                    _todos.add(value);
-                  });
-                },
-                child: const Text(
-                  "Yes",
-                  style: TextStyle(color: Colors.green),
+                  },
+                  child: const Text(
+                    "No",
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
-              )
-            ],
+                TextButton(
+                  onPressed: () {addTODO(value);},
+                  child: const Text(
+                    "Yes",
+                    style: TextStyle(color: Colors.green),
+                  ),
+                )
+              ],
+            ),
           );
         },
       );
@@ -96,7 +106,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Expanded(
               flex: 2,
-              // TODO: _todos.length here above list view
               child: _todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
                 //isAlwaysShown: true,
                 // TODO: to builder
