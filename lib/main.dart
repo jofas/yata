@@ -30,11 +30,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _text_controller = new TextEditingController();
-  final _nothing_todo = Text("Great! Nothing TODO!");
-  final _nothing_done = Text("Oh! You haven't done anything!");
+  final _nothing_todo = "Great! Nothing TODO!";
+  final _nothing_done = "Oh! You haven't done anything yet!";
 
-  List<Widget> _todos = [];
-  List<Widget> _done = [];
+  List<String> _todos = [];
+  List<String> _done = [];
 
   _MyHomePageState() : super() {
     _todos.add(_nothing_todo);
@@ -74,12 +74,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     //       elements
                     //
                     //       ability to move todos around
-                    var new_todo = Text(value);
-
                     if (_todos[0] == _nothing_todo)
-                      _todos[0] = new_todo;
+                      _todos[0] = value;
                     else
-                      _todos.add(new_todo);
+                      _todos.add(value);
                   });
                 },
                 child: const Text(
@@ -110,15 +108,45 @@ class _MyHomePageState extends State<MyHomePage> {
                 labelText: "Enter a TODO item",
               ),
             ),
-            Text("TODO:"),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: _todos,
+            Text(
+              "TODO:",
+              style: Theme.of(context).textTheme.headline3,
             ),
-            Text("DONE:"),
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
-              children: _done,
+              children: _todos.asMap().map((int key, String val) {
+                if (_todos.length == 1 && _todos[0] == _nothing_todo) {
+                  return MapEntry(key, Text(val));
+                }
+
+                return MapEntry(key, Row(
+                  children: <Widget>[
+                    Text(val),
+                    TextButton(
+                      child: Text("Done")
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _todos.removeAt(key);
+                          if (_todos.length == 0)
+                            _todos.add(_nothing_todo);
+                        });
+                      },
+                      child: Text("Delete"),
+                    ),
+                  ],
+                ));
+              }).values.toList(),
+            ),
+            Text("DONE:",
+              style: Theme.of(context).textTheme.headline3,
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: _done.map((String val) {
+                return Text(val);
+              }).toList(),
             ),
           ],
         ),
