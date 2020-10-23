@@ -36,10 +36,6 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> _todos = [];
   List<String> _done = [];
 
-  _MyHomePageState() : super() {
-    _done.add(_nothing_done);
-  }
-
   showDialogBoxWithString(BuildContext context) {
     return (String value) async {
       await showDialog<void>(
@@ -117,11 +113,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     TextButton(
                       onPressed: () {
                         setState(() {
+                          _todos.removeAt(key);
                           _done.add(val);
-
                         });
                       },
-                      child: Text("Done")
+                      child: Text("Done"),
                     ),
                     TextButton(
                       onPressed: () {
@@ -140,9 +136,30 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
-              children: _done.map((String val) {
-                return Text(val);
-              }).toList(),
+              children: _done.length == 0 ? <Widget>[Text(_nothing_done)] : _done.asMap().map((int key, String val) {
+                return MapEntry(key, Row(
+                  children: <Widget>[
+                    Text(val),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _done.removeAt(key);
+                          _todos.add(val);
+                        });
+                      },
+                      child: Text("Undone"),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _done.removeAt(key);
+                        });
+                      },
+                      child: Text("Delete"),
+                    ),
+                  ],
+                ));
+              }).values.toList(),
             ),
           ],
         ),
