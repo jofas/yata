@@ -27,8 +27,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _text_controller = new TextEditingController();
-  final _nothing_todo = "Great! Nothing TODO!";
-  final _nothing_done = "Oh! You haven't done anything yet!";
+  static const _nothing_todo = "Great! Nothing TODO!";
+  static const _nothing_done = "Oh! You haven't done anything yet!";
 
   List<String> _todos = [];
   List<String> _done = [];
@@ -97,13 +97,11 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
               flex: 2,
               // TODO: _todos.length here above list view
-
-              child: Scrollbar(
+              child: _todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
                 //isAlwaysShown: true,
-
                 // TODO: to builder
                 child: ListView(
-                  children: _todos.length == 0 ? <Widget>[Text(_nothing_todo)] : _todos.asMap().map((int key, String val) {
+                  children: _todos.asMap().map((int key, String val) {
                     return MapEntry(key, Row(
                       // TODO: make this one sexier to look at and
                       //       give this column a fixed size and make todos
@@ -138,8 +136,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Expanded(
               flex: 1,
-              child: ListView(
-                children: _done.length == 0 ? <Widget>[Text(_nothing_done)] : _done.asMap().map((int key, String val) {
+              child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : ListView(
+                children: _done.asMap().map((int key, String val) {
                   return MapEntry(key, Row(
                     children: <Widget>[
                       Text(val),
@@ -150,7 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             _todos.add(val);
                           });
                         },
-                        child: Text("Undone"),
+                        child: const Text("Undo"),
                       ),
                       TextButton(
                         onPressed: () {
@@ -158,7 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             _done.removeAt(key);
                           });
                         },
-                        child: Text("Delete"),
+                        child: const Text("Delete"),
                       ),
                     ],
                   ));
