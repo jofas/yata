@@ -13,9 +13,6 @@ class MyApp extends StatelessWidget {
       title: title,
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: MyHomePage(),
@@ -61,14 +58,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   setState(() {
                     Navigator.pop(context);
                     _text_controller.clear();
-                    // TODO: make this one sexier to look at and
-                    //       add meachnism for deleting and crossing
-                    //       out todo items
-                    //
-                    //       crossing out -> second list with done
-                    //       elements
-                    //
-                    //       ability to move todos around
                     _todos.add(value);
                   });
                 },
@@ -108,6 +97,9 @@ class _MyHomePageState extends State<MyHomePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: _todos.length == 0 ? <Widget>[Text(_nothing_todo)] : _todos.asMap().map((int key, String val) {
                 return MapEntry(key, Row(
+                  // TODO: make this one sexier to look at and
+                  //       give this column a fixed size and make todos
+                  //       scrollable
                   children: <Widget>[
                     Text(val),
                     TextButton(
