@@ -30,7 +30,16 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _text_controller = new TextEditingController();
+  final _nothing_todo = Text("Great! Nothing TODO!");
+  final _nothing_done = Text("Oh! You haven't done anything!");
+
   List<Widget> _todos = [];
+  List<Widget> _done = [];
+
+  _MyHomePageState() : super() {
+    _todos.add(_nothing_todo);
+    _done.add(_nothing_done);
+  }
 
   showDialogBoxWithString(BuildContext context) {
     return (String value) async {
@@ -65,9 +74,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     //       elements
                     //
                     //       ability to move todos around
-                    _todos.add(
-                        Text(value)
-                    );
+                    var new_todo = Text(value);
+
+                    if (_todos[0] == _nothing_todo)
+                      _todos[0] = new_todo;
+                    else
+                      _todos.add(new_todo);
                   });
                 },
                 child: const Text(
@@ -98,9 +110,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 labelText: "Enter a TODO item",
               ),
             ),
+            Text("TODO:"),
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: _todos,
+            ),
+            Text("DONE:"),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: _done,
             ),
           ],
         ),
