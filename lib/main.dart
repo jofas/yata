@@ -35,6 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   showDialogBoxWithString(BuildContext context) {
     return (String value) async {
+      // TODO: add keyboard listener (on enter: press Yes button
       await showDialog<void>(
         context: context,
         builder: (BuildContext context) {
@@ -93,65 +94,76 @@ class _MyHomePageState extends State<MyHomePage> {
               "TODO:",
               style: Theme.of(context).textTheme.headline3,
             ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: _todos.length == 0 ? <Widget>[Text(_nothing_todo)] : _todos.asMap().map((int key, String val) {
-                return MapEntry(key, Row(
-                  // TODO: make this one sexier to look at and
-                  //       give this column a fixed size and make todos
-                  //       scrollable
-                  children: <Widget>[
-                    Text(val),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _todos.removeAt(key);
-                          _done.add(val);
-                        });
-                      },
-                      child: Text("Done"),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _todos.removeAt(key);
-                        });
-                      },
-                      child: Text("Delete"),
-                    ),
-                  ],
-                ));
-              }).values.toList(),
+            Expanded(
+              flex: 2,
+              // TODO: _todos.length here above list view
+
+              child: Scrollbar(
+                //isAlwaysShown: true,
+
+                // TODO: to builder
+                child: ListView(
+                  children: _todos.length == 0 ? <Widget>[Text(_nothing_todo)] : _todos.asMap().map((int key, String val) {
+                    return MapEntry(key, Row(
+                      // TODO: make this one sexier to look at and
+                      //       give this column a fixed size and make todos
+                      //       scrollable
+                      children: <Widget>[
+                        Text(val),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _todos.removeAt(key);
+                              _done.add(val);
+                            });
+                          },
+                          child: Text("Done"),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _todos.removeAt(key);
+                            });
+                          },
+                          child: Text("Delete"),
+                        ),
+                      ],
+                    ));
+                  }).values.toList(),
+                ),
+              ),
             ),
             Text("DONE:",
               style: Theme.of(context).textTheme.headline3,
             ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: _done.length == 0 ? <Widget>[Text(_nothing_done)] : _done.asMap().map((int key, String val) {
-                return MapEntry(key, Row(
-                  children: <Widget>[
-                    Text(val),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _done.removeAt(key);
-                          _todos.add(val);
-                        });
-                      },
-                      child: Text("Undone"),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _done.removeAt(key);
-                        });
-                      },
-                      child: Text("Delete"),
-                    ),
-                  ],
-                ));
-              }).values.toList(),
+            Expanded(
+              flex: 1,
+              child: ListView(
+                children: _done.length == 0 ? <Widget>[Text(_nothing_done)] : _done.asMap().map((int key, String val) {
+                  return MapEntry(key, Row(
+                    children: <Widget>[
+                      Text(val),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _done.removeAt(key);
+                            _todos.add(val);
+                          });
+                        },
+                        child: Text("Undone"),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _done.removeAt(key);
+                          });
+                        },
+                        child: Text("Delete"),
+                      ),
+                    ],
+                  ));
+                }).values.toList(),
+              ),
             ),
           ],
         ),
