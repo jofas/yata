@@ -57,6 +57,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   setState(() {
                     Navigator.pop(context);
                     _text_controller.clear();
+                    // TODO: make this one sexier to look at and
+                    //       add meachnism for deleting and crossing
+                    //       out todo items
+                    //
+                    //       crossing out -> second list with done
+                    //       elements
+                    //
+                    //       ability to move todos around
                     _todos.add(
                         Text(value)
                     );
@@ -77,26 +85,24 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: <Widget>[
-              TextField(
-                controller: _text_controller,
-                onSubmitted: showDialogBoxWithString(context),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "Enter a TODO item",
-                ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            TextField(
+              controller: _text_controller,
+              onSubmitted: showDialogBoxWithString(context),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: "Enter a TODO item",
               ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: _todos,
-              ),
-            ],
-          ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: _todos,
+            ),
+          ],
         ),
       ),
     );
