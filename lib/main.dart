@@ -28,6 +28,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _text_controller = new TextEditingController();
+  final _scroll_controller = new ScrollController();
+
   static const _nothing_todo = "Great! Nothing TODO!";
   static const _nothing_done = "Oh! You haven't done anything yet!";
 
@@ -107,14 +109,14 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
               flex: 2,
               child: _todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
-                //isAlwaysShown: true,
+                controller: _scroll_controller,
+                isAlwaysShown: true,
                 // TODO: to builder
                 child: ListView(
+                  controller: _scroll_controller,
                   children: _todos.asMap().map((int key, String val) {
                     return MapEntry(key, Row(
                       // TODO: make this one sexier to look at and
-                      //       give this column a fixed size and make todos
-                      //       scrollable
                       children: <Widget>[
                         Text(val),
                         TextButton(
@@ -145,31 +147,35 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Expanded(
               flex: 1,
-              child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : ListView(
-                children: _done.asMap().map((int key, String val) {
-                  return MapEntry(key, Row(
-                    children: <Widget>[
-                      Text(val),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _done.removeAt(key);
-                            _todos.add(val);
-                          });
-                        },
-                        child: const Text("Undo"),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _done.removeAt(key);
-                          });
-                        },
-                        child: const Text("Delete"),
-                      ),
-                    ],
-                  ));
-                }).values.toList(),
+              child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : Scrollbar(
+                controller: _scroll_controller,
+                isAlwaysShown: true,
+                child: ListView(
+                  children: _done.asMap().map((int key, String val) {
+                    return MapEntry(key, Row(
+                      children: <Widget>[
+                        Text(val),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _done.removeAt(key);
+                              _todos.add(val);
+                            });
+                          },
+                          child: const Text("Undo"),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _done.removeAt(key);
+                            });
+                          },
+                          child: const Text("Delete"),
+                        ),
+                      ],
+                    ));
+                  }).values.toList(),
+                ),
               ),
             ),
           ],
