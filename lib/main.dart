@@ -37,7 +37,6 @@ class _MyHomePageState extends State<MyHomePage> {
   List<String> _done = [];
 
   _MyHomePageState() : super() {
-    _todos.add(_nothing_todo);
     _done.add(_nothing_done);
   }
 
@@ -74,10 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     //       elements
                     //
                     //       ability to move todos around
-                    if (_todos[0] == _nothing_todo)
-                      _todos[0] = value;
-                    else
-                      _todos.add(value);
+                    _todos.add(value);
                   });
                 },
                 child: const Text(
@@ -114,23 +110,23 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
-              children: _todos.asMap().map((int key, String val) {
-                if (_todos.length == 1 && _todos[0] == _nothing_todo) {
-                  return MapEntry(key, Text(val));
-                }
-
+              children: _todos.length == 0 ? <Widget>[Text(_nothing_todo)] : _todos.asMap().map((int key, String val) {
                 return MapEntry(key, Row(
                   children: <Widget>[
                     Text(val),
                     TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _done.add(val);
+
+                        });
+                      },
                       child: Text("Done")
                     ),
                     TextButton(
                       onPressed: () {
                         setState(() {
                           _todos.removeAt(key);
-                          if (_todos.length == 0)
-                            _todos.add(_nothing_todo);
                         });
                       },
                       child: Text("Delete"),
