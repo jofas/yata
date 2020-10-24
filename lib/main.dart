@@ -103,7 +103,7 @@ class _YataState extends State<Yata> {
   getCurrentPage(BuildContext context) {
     switch (_index) {
       case 0: return YataPage(
-        "TODOs:",
+        "TODO:",
         _nothing_todo,
         _elements.todos,
         (int index) {
@@ -238,7 +238,7 @@ class YataPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.start,
       children: <Widget>[
         Text(
-          "TODO:",
+          _title,
           style: Theme.of(context).textTheme.headline3,
         ),
         Expanded(
