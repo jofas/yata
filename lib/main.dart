@@ -155,7 +155,6 @@ class _YataState extends State<Yata> {
         padding: EdgeInsets.all(16.0),
         child: getCurrentPage(context),
       ),
-      // TODO: show this only on first page
       floatingActionButton: (_index > 0) ? null : FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
@@ -194,7 +193,6 @@ class YataPage extends StatelessWidget {
 
   final List<String> _list;
 
-  // TODO: abstract into own class
   final _main_button_action;
   final _secondary_button_action;
 
