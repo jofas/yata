@@ -33,7 +33,7 @@ class _MyHomePageState extends State<MyHomePage> {
   static const _nothing_todo = "Great! Nothing TODO!";
   static const _nothing_done = "Oh! You haven't done anything yet!";
 
-  List<String> _todos = [];
+  List<String> _todos = ["A", "B", "C", "D", "E", "F", "G", "H"];
   List<String> _done = [];
 
   FocusNode _focus_node;
@@ -126,29 +126,47 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: ListView(
                   controller: _scroll_controller,
                   children: _todos.asMap().map((int key, String val) {
-                    return MapEntry(key, Row(
-                      // TODO: make this one sexier to look at
-                      children: <Widget>[
-                        Expanded(child: Text(val)),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _todos.removeAt(key);
-                              _done.insert(0, val);
-                            });
-                          },
-                          child: const Icon(Icons.check),
+                    return MapEntry(
+                      key,
+                      Container(
+                        child: Padding(
+                          padding: EdgeInsets.all(10.0),
+                          child: Container(
+                            decoration: ShapeDecoration(
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(),
+                                borderRadius: BorderRadius.all(Radius.circular(20)),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Row(
+                                children: <Widget>[
+                                  Expanded(child: Text(val)),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _todos.removeAt(key);
+                                        _done.insert(0, val);
+                                      });
+                                    },
+                                    child: const Icon(Icons.check),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _todos.removeAt(key);
+                                      });
+                                    },
+                                    child: const Icon(Icons.clear),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _todos.removeAt(key);
-                            });
-                          },
-                          child: const Icon(Icons.clear),
-                        ),
-                      ],
-                    ));
+                      ),
+                    );
                   }).values.toList(),
                 ),
               ),
