@@ -37,6 +37,7 @@ class _YataState extends State<Yata> {
   List<String> _done = [];
 
   FocusNode _focus_node;
+  int _index = 0;
 
   @override
   initState() {
@@ -103,112 +104,132 @@ class _YataState extends State<Yata> {
     );
   }
 
+  generateTODOPage(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          "TODO:",
+          style: Theme.of(context).textTheme.headline3,
+        ),
+        Expanded(
+          flex: 2,
+          child: _todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
+            controller: _scroll_controller,
+            isAlwaysShown: true,
+            //       done in its own page (buttomnavigationbar)
+            child: ListView.builder(
+              padding: EdgeInsets.all(16.0),
+              controller: _scroll_controller,
+              itemCount: _todos.length,
+              itemBuilder: (BuildContext context, int index) {
+                return Container(
+                  child: Padding(
+                    padding: EdgeInsets.all(10.0),
+                    child: Container(
+                      decoration: ShapeDecoration(
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(),
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(20)
+                          ),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(child: Text(_todos[index])),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _done.insert(0, _todos[index]);
+                                  _todos.removeAt(index);
+                                });
+                              },
+                              child: const Icon(Icons.check),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _todos.removeAt(index);
+                                });
+                              },
+                              child: const Icon(Icons.clear),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  generateDonePage(BuildContext context) {
+    return Text("DAMN");
+  }
+
+  getCurrentPage(BuildContext context) {
+    if (_index == 0) {
+      return generateTODOPage(context);
+    } else if (_index == 1) {
+      return generateDonePage(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              "TODO:",
-              style: Theme.of(context).textTheme.headline3,
-            ),
-            Expanded(
-              flex: 2,
-              child: _todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
-                controller: _scroll_controller,
-                isAlwaysShown: true,
-                //       done in its own page (buttomnavigationbar)
-                child: ListView.builder(
-                  padding: EdgeInsets.all(16.0),
+        child: getCurrentPage(context),
+
+            /* else if (_index == 1) {
+              Text(
+                "DONE:",
+                style: Theme.of(context).textTheme.headline3,
+              ),
+              Expanded(
+                flex: 1,
+                child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : Scrollbar(
                   controller: _scroll_controller,
-                  itemCount: _todos.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return Container(
-                      child: Padding(
-                        padding: EdgeInsets.all(10.0),
-                        child: Container(
-                          decoration: ShapeDecoration(
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(),
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(20)
-                              ),
-                            ),
+                  isAlwaysShown: true,
+                  child: ListView(
+                    children: _done.asMap().map((int key, String val) {
+                      return MapEntry(key, Row(
+                        children: <Widget>[
+                          Expanded(child: Text(val)),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _done.removeAt(key);
+                                _todos.insert(0, val);
+                              });
+                            },
+                            child: const Icon(Icons.restore),
                           ),
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Row(
-                              children: <Widget>[
-                                Expanded(child: Text(_todos[index])),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _done.insert(0, _todos[index]);
-                                      _todos.removeAt(index);
-                                    });
-                                  },
-                                  child: const Icon(Icons.check),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _todos.removeAt(index);
-                                    });
-                                  },
-                                  child: const Icon(Icons.clear),
-                                ),
-                              ],
-                            ),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _done.removeAt(key);
+                              });
+                            },
+                            child: const Icon(Icons.clear),
                           ),
-                        ),
-                      ),
-                    );
-                  },
+                        ],
+                      ));
+                    }).values.toList(),
+                  ),
                 ),
               ),
-            ),
-            Text(
-              "DONE:",
-              style: Theme.of(context).textTheme.headline3,
-            ),
-            Expanded(
-              flex: 1,
-              child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : Scrollbar(
-                controller: _scroll_controller,
-                isAlwaysShown: true,
-                child: ListView(
-                  children: _done.asMap().map((int key, String val) {
-                    return MapEntry(key, Row(
-                      children: <Widget>[
-                        Expanded(child: Text(val)),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _done.removeAt(key);
-                              _todos.insert(0, val);
-                            });
-                          },
-                          child: const Icon(Icons.restore),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _done.removeAt(key);
-                            });
-                          },
-                          child: const Icon(Icons.clear),
-                        ),
-                      ],
-                    ));
-                  }).values.toList(),
-                ),
-              ),
-            ),
-          ],
-        ),
+            }
+          ], */
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
@@ -217,6 +238,10 @@ class _YataState extends State<Yata> {
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _index,
+        onTap: (int index) {
+          setState(() {_index = index;});
+        },
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.format_list_bulleted),
