@@ -32,9 +32,7 @@ class _YataState extends State<Yata> {
 
   static const _nothing_todo = "Great! Nothing TODO!";
   static const _nothing_done = "Oh! You haven't done anything yet!";
-
-  List<String> _todos = []; //["A", "B", "C", "D", "E", "F", "G", "H"];
-  List<String> _done = [];
+  static const _nothing_deleted = "There is nothing here!";
 
   Elements _elements = new Elements();
 
@@ -102,122 +100,51 @@ class _YataState extends State<Yata> {
     );
   }
 
-  // TODO: abstract this thing into its own class
-  generateTODOPage(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          "TODO:",
-          style: Theme.of(context).textTheme.headline3,
-        ),
-        Expanded(
-          child: _elements.todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
-            controller: _scroll_controller,
-            isAlwaysShown: true,
-            child: ListView.builder(
-              padding: EdgeInsets.all(16.0),
-              controller: _scroll_controller,
-              itemCount: _elements.todos.length,
-              itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  child: Padding(
-                    padding: EdgeInsets.all(10.0),
-                    child: Container(
-                      decoration: ShapeDecoration(
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(),
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(20)
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(child: Text(_elements.todos[index])),
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _elements.setDone(index);
-                                });
-                              },
-                              child: const Icon(Icons.check),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _elements.setTODODeleted(index);
-                                });
-                              },
-                              child: const Icon(Icons.clear),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  generateDonePage(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          "DONE:",
-          style: Theme.of(context).textTheme.headline3,
-        ),
-        Expanded(
-          flex: 1,
-          child: _elements.done.length == 0 ? const Center(child: Text(_nothing_done)) : Scrollbar(
-            controller: _scroll_controller,
-            isAlwaysShown: true,
-            child: ListView(
-              children: _elements.done.asMap().map((int key, String val) {
-                return MapEntry(key, Row(
-                  children: <Widget>[
-                    Expanded(child: Text(val)),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _elements.unsetDone(key);
-                        });
-                      },
-                      child: const Icon(Icons.restore),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _elements.setDoneDeleted(key);
-                        });
-                      },
-                      child: const Icon(Icons.clear),
-                    ),
-                  ],
-                ));
-              }).values.toList(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   getCurrentPage(BuildContext context) {
-    if (_index == 0) {
-      return generateTODOPage(context);
-    } else if (_index == 1) {
-      return generateDonePage(context);
-    } else {
-      return Text("OK");
+    switch (_index) {
+      case 0: return YataPage(
+        "TODOs:",
+        _nothing_todo,
+        _elements.todos,
+        (int index) {
+          return () {setState(() {_elements.setDone(index);});};
+        },
+        (int index) {
+          return () {setState(() {_elements.setTODODeleted(index);});};
+        },
+        Icons.check,
+        Icons.clear,
+      );
+      case 1: return YataPage(
+        "Done:",
+        _nothing_done,
+        _elements.done,
+        (int index) {
+          return () {setState(() {_elements.setDoneDeleted(index);});};
+        },
+        (int index) {
+          return () {setState(() {_elements.unsetDone(index);});};
+        },
+        Icons.clear,
+        Icons.restore,
+      );
+      case 2: return YataPage(
+        "Deleted:",
+        _nothing_deleted,
+        _elements.deleted,
+        // TODO: add alterbox if deletion is really the thing todo
+        //       abstract alert boxes into own classes as well
+        //       make this callbacks typesafe by declaring type in
+        //         YataPage
+        (int index) {
+          return () {setState(() {_elements.deleteCompletely(index);});};
+        },
+        (int index) {
+          return () {setState(() {_elements.unsetDeleted(index);});};
+        },
+        Icons.delete,
+        Icons.restore,
+      );
     }
   }
 
@@ -251,7 +178,7 @@ class _YataState extends State<Yata> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.delete),
-            label: "Trash",
+            label: "Bin",
           ),
         ],
       ),
@@ -295,8 +222,8 @@ class YataPage extends StatelessWidget {
   final List<String> _list;
 
   // TODO: abstract into own class
-  final VoidCallback _main_button_action;
-  final VoidCallback _secondary_button_action;
+  final _main_button_action;
+  final _secondary_button_action;
 
   final IconData _main_button_icon;
   final IconData _secondary_button_icon;
@@ -340,27 +267,12 @@ class YataPage extends StatelessWidget {
                         child: Row(
                           children: <Widget>[
                             Expanded(child: Text(_list[index])),
-                            // TODO: I need to supply Icon and callback
                             ElevatedButton(
-                              onPressed: _main_button_action,
-                              /*
-                              () {
-                                setState(() {
-                                  _elements.setDone(index);
-                                });
-                              },
-                              */
+                              onPressed: _main_button_action(index),
                               child: Icon(_main_button_icon),
                             ),
                             TextButton(
-                              onPressed: _secondary_button_action,
-                              /*
-                              () {
-                                setState(() {
-                                  _elements.setTODODeleted(index);
-                                });
-                              },
-                              */
+                              onPressed: _secondary_button_action(index),
                               child: Icon(_secondary_button_icon),
                             ),
                           ],
