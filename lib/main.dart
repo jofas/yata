@@ -120,7 +120,6 @@ class _MyHomePageState extends State<MyHomePage> {
               child: _todos.length == 0 ? const Center(child: Text(_nothing_todo)) : Scrollbar(
                 controller: _scroll_controller,
                 isAlwaysShown: true,
-                // TODO: to builder
                 //       done in its own page (buttomnavigationbar)
                 child: ListView.builder(
                   padding: EdgeInsets.all(16.0),
@@ -216,6 +215,22 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: () {
           showDialogBoxForAddingTODO(context);
         },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.format_list_bulleted),
+            label: "TODOs",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check),
+            label: "Done",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.delete),
+            label: "Trash",
+          ),
+        ],
       ),
     );
   }
