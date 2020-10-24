@@ -156,7 +156,7 @@ class _YataState extends State<Yata> {
         child: getCurrentPage(context),
       ),
       // TODO: show this only on first page
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: (_index > 0) ? null : FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
           showDialogBoxForAddingTODO(context);
@@ -183,33 +183,6 @@ class _YataState extends State<Yata> {
         ],
       ),
     );
-  }
-}
-
-class Elements {
-  final List<String> todos = [];
-  final List<String> done = [];
-  final List<String> deleted = [];
-
-  addTODO(String value) => todos.insert(0, value);
-
-  setDone(int index) => _move(todos, done, index);
-
-  unsetDone(int index) => _move(done, todos, index);
-
-  setTODODeleted(int index) => _move(todos, deleted, index);
-
-  setDoneDeleted(int index) => _move(done, deleted, index);
-
-  unsetDeleted(int index) => _move(deleted, todos, index);
-
-  deleteCompletely(int index) {
-    deleted.removeAt(index);
-  }
-
-  _move(src, dest, int index) {
-    dest.insert(0, src[index]);
-    src.removeAt(index);
   }
 }
 
@@ -287,5 +260,32 @@ class YataPage extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class Elements {
+  final List<String> todos = [];
+  final List<String> done = [];
+  final List<String> deleted = [];
+
+  addTODO(String value) => todos.insert(0, value);
+
+  setDone(int index) => _move(todos, done, index);
+
+  unsetDone(int index) => _move(done, todos, index);
+
+  setTODODeleted(int index) => _move(todos, deleted, index);
+
+  setDoneDeleted(int index) => _move(done, deleted, index);
+
+  unsetDeleted(int index) => _move(deleted, todos, index);
+
+  deleteCompletely(int index) {
+    deleted.removeAt(index);
+  }
+
+  _move(src, dest, int index) {
+    dest.insert(0, src[index]);
+    src.removeAt(index);
   }
 }
