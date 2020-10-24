@@ -16,17 +16,17 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyHomePage(),
+      home: Yata(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class Yata extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _YataState createState() => _YataState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _YataState extends State<Yata> {
   final _text_controller = new TextEditingController();
   final _scroll_controller = new ScrollController();
 
