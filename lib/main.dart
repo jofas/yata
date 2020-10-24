@@ -172,7 +172,48 @@ class _YataState extends State<Yata> {
   }
 
   generateDonePage(BuildContext context) {
-    return Text("DAMN");
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          "DONE:",
+          style: Theme.of(context).textTheme.headline3,
+        ),
+        Expanded(
+          flex: 1,
+          child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : Scrollbar(
+            controller: _scroll_controller,
+            isAlwaysShown: true,
+            child: ListView(
+              children: _done.asMap().map((int key, String val) {
+                return MapEntry(key, Row(
+                  children: <Widget>[
+                    Expanded(child: Text(val)),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _done.removeAt(key);
+                          _todos.insert(0, val);
+                        });
+                      },
+                      child: const Icon(Icons.restore),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _done.removeAt(key);
+                        });
+                      },
+                      child: const Icon(Icons.clear),
+                    ),
+                  ],
+                ));
+              }).values.toList(),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   getCurrentPage(BuildContext context) {
@@ -180,6 +221,8 @@ class _YataState extends State<Yata> {
       return generateTODOPage(context);
     } else if (_index == 1) {
       return generateDonePage(context);
+    } else {
+      return Text("OK");
     }
   }
 
@@ -189,47 +232,6 @@ class _YataState extends State<Yata> {
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: getCurrentPage(context),
-
-            /* else if (_index == 1) {
-              Text(
-                "DONE:",
-                style: Theme.of(context).textTheme.headline3,
-              ),
-              Expanded(
-                flex: 1,
-                child: _done.length == 0 ? const Center(child: Text(_nothing_done)) : Scrollbar(
-                  controller: _scroll_controller,
-                  isAlwaysShown: true,
-                  child: ListView(
-                    children: _done.asMap().map((int key, String val) {
-                      return MapEntry(key, Row(
-                        children: <Widget>[
-                          Expanded(child: Text(val)),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _done.removeAt(key);
-                                _todos.insert(0, val);
-                              });
-                            },
-                            child: const Icon(Icons.restore),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _done.removeAt(key);
-                              });
-                            },
-                            child: const Icon(Icons.clear),
-                          ),
-                        ],
-                      ));
-                    }).values.toList(),
-                  ),
-                ),
-              ),
-            }
-          ], */
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
