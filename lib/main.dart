@@ -67,7 +67,6 @@ class _YataState extends State<Yata> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        var width = MediaQuery.of(context).size.width;
         return AlertDialog(
           content: generateAlertDialogContentContainer(
             context: context,
@@ -106,11 +105,14 @@ class _YataState extends State<Yata> {
   //       I could do the same thing with YataPage for Alterting,
   //       just providing callbacks for state changes in this
   //       class
+
+  // optional index in constructor
   showDialogBoxForDeletingItemCompletely(BuildContext context, int index) async {
+    // here generate YataAlertDialog with callbacks
+
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        var width = MediaQuery.of(context).size.width;
         return AlertDialog(
           content: generateAlertDialogContentContainer(
             context: context,
@@ -142,31 +144,65 @@ class _YataState extends State<Yata> {
   getCurrentPage(BuildContext context) {
     switch (_index) {
       case 0: return YataPage(
-        "TODO:",
-        _nothing_todo,
-        _elements.todos,
-        (int index) => () {setState(() {_elements.setDone(index);});},
-        (int index) => () {setState(() {_elements.setTODODeleted(index);});},
-        Icons.check,
-        Icons.clear,
+        title: "TODO:",
+        defaultText: _nothing_todo,
+        elementsList: _elements.todos,
+        mainButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.setDone(index);
+            });
+          },
+          child: const Icon(Icons.check),
+        ),
+        secondaryButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.setTODODeleted(index);
+            });
+          },
+          child: const Icon(Icons.clear),
+        ),
       );
       case 1: return YataPage(
-        "Done:",
-        _nothing_done,
-        _elements.done,
-        (int index) => () {setState(() {_elements.setDoneDeleted(index);});},
-        (int index) => () {setState(() {_elements.unsetDone(index);});},
-        Icons.clear,
-        Icons.restore,
+        title: "Done:",
+        defaultText: _nothing_done,
+        elementsList: _elements.done,
+        mainButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.setDoneDeleted(index);
+            });
+          },
+          child: const Icon(Icons.clear),
+        ),
+        secondaryButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.unsetDone(index);
+            });
+          },
+          child: const Icon(Icons.restore),
+        ),
       );
       case 2: return YataPage(
-        "Deleted:",
-        _nothing_deleted,
-        _elements.deleted,
-        (int index) => () {showDialogBoxForDeletingItemCompletely(context, index);},
-        (int index) => () {setState(() {_elements.unsetDeleted(index);});},
-        Icons.delete,
-        Icons.restore,
+        title: "Deleted:",
+        defaultText: _nothing_deleted,
+        elementsList: _elements.deleted,
+        mainButton: YataButtonTemplate(
+          action: (int index) => () {
+            showDialogBoxForDeletingItemCompletely(context, index);
+          },
+          child: const Icon(Icons.delete),
+        ),
+        secondaryButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.unsetDeleted(index);
+            });
+          },
+          child: const Icon(Icons.restore),
+        ),
       );
     }
   }
@@ -208,25 +244,23 @@ class _YataState extends State<Yata> {
   }
 }
 
-typedef YataButtonAction = Null Function() Function(int);
-
 class YataPage extends StatelessWidget {
   final _scroll_controller = new ScrollController();
 
-  final String _title;
-  final String _default_text;
+  final String title;
+  final String defaultText;
 
-  final List<String> _list;
+  final List<String> elementsList;
 
-  final YataButtonAction _main_button_action;
-  final YataButtonAction _secondary_button_action;
+  final YataButtonTemplate mainButton;
+  final YataButtonTemplate secondaryButton;
 
-  final IconData _main_button_icon;
-  final IconData _secondary_button_icon;
-
-  YataPage(this._title, this._default_text, this._list,
-      this._main_button_action, this._secondary_button_action,
-      this._main_button_icon, this._secondary_button_icon);
+  YataPage({
+    this.title,
+    this.defaultText,
+    this.elementsList,
+    this.mainButton,
+    this.secondaryButton});
 
   @override
   Widget build(BuildContext context) {
@@ -234,17 +268,17 @@ class YataPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.start,
       children: <Widget>[
         Text(
-          _title,
+          title,
           style: Theme.of(context).textTheme.headline3,
         ),
         Expanded(
-          child: _list.length == 0 ? Center(child: Text(_default_text)) : Scrollbar(
+          child: elementsList.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
             controller: _scroll_controller,
             isAlwaysShown: true,
             child: ListView.builder(
               padding: EdgeInsets.all(16.0),
               controller: _scroll_controller,
-              itemCount: _list.length,
+              itemCount: elementsList.length,
               itemBuilder: (BuildContext context, int index) {
                 return Container(
                   child: Padding(
@@ -262,15 +296,9 @@ class YataPage extends StatelessWidget {
                         padding: EdgeInsets.all(16.0),
                         child: Row(
                           children: <Widget>[
-                            Expanded(child: Text(_list[index])),
-                            ElevatedButton(
-                              onPressed: _main_button_action(index),
-                              child: Icon(_main_button_icon),
-                            ),
-                            TextButton(
-                              onPressed: _secondary_button_action(index),
-                              child: Icon(_secondary_button_icon),
-                            ),
+                            Expanded(child: Text(elementsList[index])),
+                            mainButton.generateElevatedButton(index),
+                            secondaryButton.generateTextButton(index),
                           ],
                         ),
                       ),
@@ -313,6 +341,29 @@ class Elements {
   }
 }
 
+typedef YataButtonAction = Null Function() Function(int);
+
+class YataButtonTemplate {
+  final Widget child;
+  final YataButtonAction action;
+
+  YataButtonTemplate({this.child, this.action});
+
+  generateElevatedButton(int index) {
+    return ElevatedButton(
+      onPressed: action(index),
+      child: child,
+    );
+  }
+
+  generateTextButton(int index) {
+    return TextButton(
+      onPressed: action(index),
+      child: child,
+    );
+  }
+}
+
 Widget generateAlertDialogContentContainer(
     {@required BuildContext context, @required Widget child})
 {
@@ -322,4 +373,3 @@ Widget generateAlertDialogContentContainer(
     child: child,
   );
 }
-
