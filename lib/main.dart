@@ -74,9 +74,11 @@ class _YataState extends State<Yata> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
+        // TODO: this in abstraction
         return AlertDialog(
           content: generateAlertDialogContentContainer(
             context: context,
+            // TODO: this in abstraction
             child: TextField(
               autofocus: true,
               focusNode: _focus_node,
@@ -89,6 +91,7 @@ class _YataState extends State<Yata> {
             ),
           ),
           actions: <Widget>[
+            // TODO: this in abstraction
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -117,12 +120,14 @@ class _YataState extends State<Yata> {
             if (event.logicalKey == LogicalKeyboardKey.enter)
               deleteCompletely(index);
           },
+          // TODO: abstract this
           child: AlertDialog(
             content: generateAlertDialogContentContainer(
               context: context,
               child: Text("Are you sure you want to delete this item?"),
             ),
             actions: <Widget>[
+              // TODO: abstract this
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
@@ -130,6 +135,7 @@ class _YataState extends State<Yata> {
                 },
                 child: const Text("CANCEL"),
               ),
+              // TODO: abstract this
               ElevatedButton(
                 onPressed: () {
                   deleteCompletely(index);
@@ -216,6 +222,7 @@ class _YataState extends State<Yata> {
         padding: EdgeInsets.all(16.0),
         child: getCurrentPage(),
       ),
+      // TODO: FloatingActionButton for delete all
       floatingActionButton: (_index > 0) ? null : FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
@@ -366,6 +373,7 @@ class YataButtonTemplate {
   }
 }
 
+// TODO: to StatelessWidget
 Widget generateAlertDialogContentContainer(
     {@required BuildContext context, @required Widget child})
 {
