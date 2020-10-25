@@ -100,6 +100,39 @@ class _YataState extends State<Yata> {
     );
   }
 
+  showDialogBoxForDeletingItemCompletely(BuildContext context, int index) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        var width = MediaQuery.of(context).size.width;
+        return AlertDialog(
+          content: Container(
+            width: width > 600.0 ? 600.0 : width,
+            child: Text("Are you sure you want to delete this item?"),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _text_controller.clear();
+              },
+              child: const Text("CANCEL"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  Navigator.pop(context);
+                  _elements.deleteCompletely(index);
+                });
+              },
+              child: const Text("DELETE"),
+            )
+          ],
+        );
+      }
+    );
+  }
+
   getCurrentPage(BuildContext context) {
     switch (_index) {
       case 0: return YataPage(
@@ -126,7 +159,7 @@ class _YataState extends State<Yata> {
         _elements.deleted,
         // TODO: add alterbox if deletion is really the thing todo
         //       abstract alert boxes into own classes as well
-        (int index) => () {setState(() {_elements.deleteCompletely(index);});},
+        (int index) => () {showDialogBoxForDeletingItemCompletely(context, index);},
         (int index) => () {setState(() {_elements.unsetDeleted(index);});},
         Icons.delete,
         Icons.restore,
