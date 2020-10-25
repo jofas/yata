@@ -69,8 +69,8 @@ class _YataState extends State<Yata> {
       builder: (BuildContext context) {
         var width = MediaQuery.of(context).size.width;
         return AlertDialog(
-          content: Container(
-            width: width > 600.0 ? 600.0 : width,
+          content: generateAlertDialogContentContainer(
+            context: context,
             child: TextField(
               autofocus: true,
               focusNode: _focus_node,
@@ -100,14 +100,20 @@ class _YataState extends State<Yata> {
     );
   }
 
+  // TODO: abstract alert boxes into own classes as well
+  //       add RawKeyBoardListener to this box for getting enter events
+  //
+  //       I could do the same thing with YataPage for Alterting,
+  //       just providing callbacks for state changes in this
+  //       class
   showDialogBoxForDeletingItemCompletely(BuildContext context, int index) async {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         var width = MediaQuery.of(context).size.width;
         return AlertDialog(
-          content: Container(
-            width: width > 600.0 ? 600.0 : width,
+          content: generateAlertDialogContentContainer(
+            context: context,
             child: Text("Are you sure you want to delete this item?"),
           ),
           actions: <Widget>[
@@ -157,8 +163,6 @@ class _YataState extends State<Yata> {
         "Deleted:",
         _nothing_deleted,
         _elements.deleted,
-        // TODO: add alterbox if deletion is really the thing todo
-        //       abstract alert boxes into own classes as well
         (int index) => () {showDialogBoxForDeletingItemCompletely(context, index);},
         (int index) => () {setState(() {_elements.unsetDeleted(index);});},
         Icons.delete,
@@ -308,3 +312,14 @@ class Elements {
     src.removeAt(index);
   }
 }
+
+Widget generateAlertDialogContentContainer(
+    {@required BuildContext context, @required Widget child})
+{
+  final width = MediaQuery.of(context).size.width;
+  return Container(
+    width: width > 600.0 ? 600.0 : width,
+    child: child,
+  );
+}
+
