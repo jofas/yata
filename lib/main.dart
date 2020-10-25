@@ -106,12 +106,8 @@ class _YataState extends State<Yata> {
         "TODO:",
         _nothing_todo,
         _elements.todos,
-        (int index) {
-          return () {setState(() {_elements.setDone(index);});};
-        },
-        (int index) {
-          return () {setState(() {_elements.setTODODeleted(index);});};
-        },
+        (int index) => () {setState(() {_elements.setDone(index);});},
+        (int index) => () {setState(() {_elements.setTODODeleted(index);});},
         Icons.check,
         Icons.clear,
       );
@@ -119,12 +115,8 @@ class _YataState extends State<Yata> {
         "Done:",
         _nothing_done,
         _elements.done,
-        (int index) {
-          return () {setState(() {_elements.setDoneDeleted(index);});};
-        },
-        (int index) {
-          return () {setState(() {_elements.unsetDone(index);});};
-        },
+        (int index) => () {setState(() {_elements.setDoneDeleted(index);});},
+        (int index) => () {setState(() {_elements.unsetDone(index);});},
         Icons.clear,
         Icons.restore,
       );
@@ -134,14 +126,8 @@ class _YataState extends State<Yata> {
         _elements.deleted,
         // TODO: add alterbox if deletion is really the thing todo
         //       abstract alert boxes into own classes as well
-        //       make this callbacks typesafe by declaring type in
-        //         YataPage
-        (int index) {
-          return () {setState(() {_elements.deleteCompletely(index);});};
-        },
-        (int index) {
-          return () {setState(() {_elements.unsetDeleted(index);});};
-        },
+        (int index) => () {setState(() {_elements.deleteCompletely(index);});},
+        (int index) => () {setState(() {_elements.unsetDeleted(index);});},
         Icons.delete,
         Icons.restore,
       );
@@ -185,6 +171,8 @@ class _YataState extends State<Yata> {
   }
 }
 
+typedef YataButtonAction = Null Function() Function(int);
+
 class YataPage extends StatelessWidget {
   final _scroll_controller = new ScrollController();
 
@@ -193,8 +181,8 @@ class YataPage extends StatelessWidget {
 
   final List<String> _list;
 
-  final _main_button_action;
-  final _secondary_button_action;
+  final YataButtonAction _main_button_action;
+  final YataButtonAction _secondary_button_action;
 
   final IconData _main_button_icon;
   final IconData _secondary_button_icon;
