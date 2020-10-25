@@ -106,14 +106,6 @@ class _YataState extends State<Yata> {
     );
   }
 
-  // TODO: abstract alert boxes into own classes as well
-  //       add RawKeyBoardListener to this box for getting enter events
-  //
-  //       I could do the same thing with YataPage for Alterting,
-  //       just providing callbacks for state changes in this
-  //       class
-
-  // optional index in constructor
   showDialogBoxForDeletingItemCompletely(int index) async {
     await showDialog<void>(
       context: context,
