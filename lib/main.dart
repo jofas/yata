@@ -76,8 +76,7 @@ class _YataState extends State<Yata> {
       builder: (BuildContext context) {
         // TODO: this in abstraction
         return AlertDialog(
-          content: generateAlertDialogContentContainer(
-            context: context,
+          content: AlertDialogContentContainer(
             // TODO: this in abstraction
             child: TextField(
               autofocus: true,
@@ -122,8 +121,7 @@ class _YataState extends State<Yata> {
           },
           // TODO: abstract this
           child: AlertDialog(
-            content: generateAlertDialogContentContainer(
-              context: context,
+            content: AlertDialogContentContainer(
               child: Text("Are you sure you want to delete this item?"),
             ),
             actions: <Widget>[
@@ -373,13 +371,15 @@ class YataButtonTemplate {
   }
 }
 
-// TODO: to StatelessWidget
-Widget generateAlertDialogContentContainer(
-    {@required BuildContext context, @required Widget child})
-{
-  final width = MediaQuery.of(context).size.width;
-  return Container(
-    width: width > 600.0 ? 600.0 : width,
-    child: child,
-  );
+class AlertDialogContentContainer extends Container {
+  AlertDialogContentContainer({Widget child}) : super(child:child);
+
+  @override
+  build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return Container(
+      width: width > 600.0 ? 600.0 : width,
+      child: child,
+    );
+  }
 }
