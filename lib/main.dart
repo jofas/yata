@@ -375,11 +375,14 @@ class AlertDialogContentContainer extends Container {
   AlertDialogContentContainer({Widget child}) : super(child:child);
 
   @override
-  build(BuildContext context) {
+  BoxConstraints constraints;
+
+  @override
+  Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return Container(
-      width: width > 600.0 ? 600.0 : width,
-      child: child,
+    this.constraints = BoxConstraints.tightFor(
+      width: width > 600.0 ? 600.0 : width
     );
+    return super.build(context);
   }
 }
