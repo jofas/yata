@@ -34,6 +34,11 @@ class _YataState extends State<Yata> {
   static const _nothing_done = "Oh! You haven't done anything yet!";
   static const _nothing_deleted = "There is nothing here!";
 
+  // TODO: put this into a Provider thingy and make this thing more
+  //       readable
+  //
+  //       and use navigator to switch between sides rather than
+  //       this index based switch-approach
   Elements _elements = new Elements();
 
   FocusNode _focus_node;
