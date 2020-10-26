@@ -63,10 +63,12 @@ class _YataState extends State<Yata> {
     });
   }
 
-  deleteCompletely(int index) {
+  deleteCompletely({int index}) {
     setState(() {
       Navigator.pop(context);
-      _elements.deleteCompletely(index);
+      index == null ?
+        _elements.deleteAllCompletely() :
+        _elements.deleteCompletely(index);
     });
   }
 
@@ -74,10 +76,8 @@ class _YataState extends State<Yata> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        // TODO: this in abstraction
         return AlertDialog(
           content: AlertDialogContentContainer(
-            // TODO: this in abstraction
             child: TextField(
               autofocus: true,
               focusNode: _focus_node,
@@ -90,7 +90,6 @@ class _YataState extends State<Yata> {
             ),
           ),
           actions: <Widget>[
-            // TODO: this in abstraction
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -117,15 +116,13 @@ class _YataState extends State<Yata> {
           autofocus: true,
           onKey: (RawKeyEvent event) {
             if (event.logicalKey == LogicalKeyboardKey.enter)
-              deleteCompletely(index);
+              deleteCompletely(index: index);
           },
-          // TODO: abstract this
           child: AlertDialog(
             content: AlertDialogContentContainer(
               child: Text("Are you sure you want to delete this item?"),
             ),
             actions: <Widget>[
-              // TODO: abstract this
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
@@ -133,10 +130,45 @@ class _YataState extends State<Yata> {
                 },
                 child: const Text("CANCEL"),
               ),
-              // TODO: abstract this
               ElevatedButton(
                 onPressed: () {
-                  deleteCompletely(index);
+                  deleteCompletely(index: index);
+                },
+                child: const Text("DELETE"),
+              )
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  showDialogBoxForDeletingAllItemsCompletely() async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return RawKeyboardListener(
+          focusNode: _focus_node,
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event.logicalKey == LogicalKeyboardKey.enter)
+              deleteCompletely();
+          },
+          child: AlertDialog(
+            content: AlertDialogContentContainer(
+              child: Text("Are you sure you want to delete all items in the bin?"),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _text_controller.clear();
+                },
+                child: const Text("CANCEL"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  deleteCompletely();
                 },
                 child: const Text("DELETE"),
               )
@@ -213,6 +245,26 @@ class _YataState extends State<Yata> {
     }
   }
 
+  getFloatingActionButton() {
+    if (_index == 0) {
+      return FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () {
+          showDialogBoxForAddingTODO();
+        },
+      );
+    }
+
+    if (_index == 2 && _elements.deleted.length > 0) {
+      return FloatingActionButton(
+        child: const Icon(Icons.delete),
+        onPressed: () {
+          showDialogBoxForDeletingAllItemsCompletely();
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,13 +272,7 @@ class _YataState extends State<Yata> {
         padding: EdgeInsets.all(16.0),
         child: getCurrentPage(),
       ),
-      // TODO: FloatingActionButton for delete all
-      floatingActionButton: (_index > 0) ? null : FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          showDialogBoxForAddingTODO();
-        },
-      ),
+      floatingActionButton: getFloatingActionButton(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (int index) {
@@ -321,10 +367,26 @@ class YataPage extends StatelessWidget {
   }
 }
 
+class AlertDialogContentContainer extends Container {
+  AlertDialogContentContainer({Widget child}) : super(child:child);
+
+  @override
+  BoxConstraints constraints;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    this.constraints = BoxConstraints.tightFor(
+      width: width > 600.0 ? 600.0 : width
+    );
+    return super.build(context);
+  }
+}
+
 class Elements {
-  final List<String> todos = [];
-  final List<String> done = [];
-  final List<String> deleted = [];
+  List<String> todos = [];
+  List<String> done = [];
+  List<String> deleted = [];
 
   addTODO(String value) => todos.insert(0, value);
 
@@ -341,6 +403,8 @@ class Elements {
   deleteCompletely(int index) {
     deleted.removeAt(index);
   }
+
+  deleteAllCompletely() => deleted = [];
 
   _move(src, dest, int index) {
     dest.insert(0, src[index]);
@@ -368,21 +432,5 @@ class YataButtonTemplate {
       onPressed: action(index),
       child: child,
     );
-  }
-}
-
-class AlertDialogContentContainer extends Container {
-  AlertDialogContentContainer({Widget child}) : super(child:child);
-
-  @override
-  BoxConstraints constraints;
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    this.constraints = BoxConstraints.tightFor(
-      width: width > 600.0 ? 600.0 : width
-    );
-    return super.build(context);
   }
 }
