@@ -51,25 +51,121 @@ class _YataState extends State<Yata> {
     super.dispose();
   }
 
-  addTODO() {
-    setState(() {
-      if (_text_controller.text.length > 0) {
-        Navigator.pop(context);
-        _elements.addTODO(_text_controller.text);
-        _text_controller.clear();
-      } else {
-        _focus_node.requestFocus();
-      }
-    });
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: getCurrentPage(),
+      ),
+      floatingActionButton: getFloatingActionButton(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _index,
+        onTap: (int index) {
+          setState(() {_index = index;});
+        },
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.format_list_bulleted),
+            label: "TODOs",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check),
+            label: "Done",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.delete),
+            label: "Bin",
+          ),
+        ],
+      ),
+    );
   }
 
-  deleteCompletely({int index}) {
-    setState(() {
-      Navigator.pop(context);
-      index == null ?
-        _elements.deleteAllCompletely() :
-        _elements.deleteCompletely(index);
-    });
+  getCurrentPage() {
+    switch (_index) {
+      case 0: return YataPage(
+        title: "TODO:",
+        defaultText: _nothing_todo,
+        elementsList: _elements.todos,
+        mainButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.setDone(index);
+            });
+          },
+          child: const Icon(Icons.check),
+        ),
+        secondaryButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.setTODODeleted(index);
+            });
+          },
+          child: const Icon(Icons.clear),
+        ),
+      );
+      case 1: return YataPage(
+        title: "Done:",
+        defaultText: _nothing_done,
+        elementsList: _elements.done,
+        mainButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.setDoneDeleted(index);
+            });
+          },
+          child: const Icon(Icons.clear),
+        ),
+        secondaryButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.unsetDone(index);
+            });
+          },
+          child: const Icon(Icons.restore),
+        ),
+      );
+      case 2: return YataPage(
+        title: "Deleted:",
+        defaultText: _nothing_deleted,
+        elementsList: _elements.deleted,
+        mainButton: YataButtonTemplate(
+          action: (int index) => () {
+            showDialogBoxForDeletingItemCompletely(index);
+          },
+          child: const Icon(Icons.delete),
+        ),
+        secondaryButton: YataButtonTemplate(
+          action: (int index) => () {
+            setState(() {
+              _elements.unsetDeleted(index);
+            });
+          },
+          child: const Icon(Icons.restore),
+        ),
+      );
+    }
+  }
+
+  getFloatingActionButton() {
+    if (_index == 0) {
+      return FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () {
+          showDialogBoxForAddingTODO();
+        },
+      );
+    }
+
+    if (_index == 2 && _elements.deleted.length > 0) {
+      return FloatingActionButton(
+        child: const Icon(Icons.delete),
+        onPressed: () {
+          showDialogBoxForDeletingAllItemsCompletely();
+        },
+      );
+    }
   }
 
   showDialogBoxForAddingTODO() async {
@@ -179,121 +275,25 @@ class _YataState extends State<Yata> {
     );
   }
 
-  getCurrentPage() {
-    switch (_index) {
-      case 0: return YataPage(
-        title: "TODO:",
-        defaultText: _nothing_todo,
-        elementsList: _elements.todos,
-        mainButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.setDone(index);
-            });
-          },
-          child: const Icon(Icons.check),
-        ),
-        secondaryButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.setTODODeleted(index);
-            });
-          },
-          child: const Icon(Icons.clear),
-        ),
-      );
-      case 1: return YataPage(
-        title: "Done:",
-        defaultText: _nothing_done,
-        elementsList: _elements.done,
-        mainButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.setDoneDeleted(index);
-            });
-          },
-          child: const Icon(Icons.clear),
-        ),
-        secondaryButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.unsetDone(index);
-            });
-          },
-          child: const Icon(Icons.restore),
-        ),
-      );
-      case 2: return YataPage(
-        title: "Deleted:",
-        defaultText: _nothing_deleted,
-        elementsList: _elements.deleted,
-        mainButton: YataButtonTemplate(
-          action: (int index) => () {
-            showDialogBoxForDeletingItemCompletely(index);
-          },
-          child: const Icon(Icons.delete),
-        ),
-        secondaryButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.unsetDeleted(index);
-            });
-          },
-          child: const Icon(Icons.restore),
-        ),
-      );
-    }
+  addTODO() {
+    setState(() {
+      if (_text_controller.text.length > 0) {
+        Navigator.pop(context);
+        _elements.addTODO(_text_controller.text);
+        _text_controller.clear();
+      } else {
+        _focus_node.requestFocus();
+      }
+    });
   }
 
-  getFloatingActionButton() {
-    if (_index == 0) {
-      return FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          showDialogBoxForAddingTODO();
-        },
-      );
-    }
-
-    if (_index == 2 && _elements.deleted.length > 0) {
-      return FloatingActionButton(
-        child: const Icon(Icons.delete),
-        onPressed: () {
-          showDialogBoxForDeletingAllItemsCompletely();
-        },
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: getCurrentPage(),
-      ),
-      floatingActionButton: getFloatingActionButton(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (int index) {
-          setState(() {_index = index;});
-        },
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.format_list_bulleted),
-            label: "TODOs",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check),
-            label: "Done",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.delete),
-            label: "Bin",
-          ),
-        ],
-      ),
-    );
+  deleteCompletely({int index}) {
+    setState(() {
+      Navigator.pop(context);
+      index == null ?
+        _elements.deleteAllCompletely() :
+        _elements.deleteCompletely(index);
+    });
   }
 }
 
