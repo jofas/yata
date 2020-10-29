@@ -28,6 +28,8 @@ class _YataState extends State<Yata> {
 
   FocusNode _focus_node;
   int _index = 0; // TODO: this into Provider-Consumer Pattern as well
+                  // then I should be able to remove onTap from
+                  // YataPage as well
 
   _YataState() {
     _todoPage = MaterialPage(
@@ -45,6 +47,12 @@ class _YataState extends State<Yata> {
           child: const Icon(Icons.clear),
         ),
         onTap: onTap,
+        floatingActionButton: FloatingActionButton(
+          child: const Icon(Icons.add),
+            onPressed: () {
+              //showDialogBoxForAddingTODO();
+          },
+        ),
       ),
     );
 
@@ -304,13 +312,16 @@ class YataPage extends StatelessWidget {
 
   final ValueChanged<int> onTap;
 
+  final floatingActionButton;
+
   YataPage({
     this.title,
     this.defaultText,
     this.elementsList,
     this.mainButton,
     this.secondaryButton,
-    this.onTap});
+    this.onTap,
+    this.floatingActionButton: null});
 
   @override
   Widget build(BuildContext context) {
@@ -371,7 +382,7 @@ class YataPage extends StatelessWidget {
           ],
         ),
       ),
-      //floatingActionButton: getFloatingActionButton(),
+      floatingActionButton: floatingActionButton,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: elementsList.index,
         onTap: onTap,
