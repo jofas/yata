@@ -4,7 +4,27 @@ import 'package:provider/provider.dart';
 import 'dart:collection';
 
 void main() {
-  runApp(Yata());
+  runApp(YataApp());
+}
+
+class YataApp extends StatelessWidget {
+  static const String title = "yata";
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: title,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: ChangeNotifierProvider<Elements>(
+        key: ValueKey("OH MY WTF"),
+        create: (context) => Elements(),
+        child: Yata(),
+      ),
+    );
+  }
 }
 
 class Yata extends StatefulWidget {
@@ -15,7 +35,7 @@ class Yata extends StatefulWidget {
 class _YataState extends State<Yata> {
   static const String _title = "yata";
 
-  final _text_controller = new TextEditingController();
+  //final _text_controller = new TextEditingController();
   final _scroll_controller = new ScrollController();
 
   static const _nothing_todo = "Great! Nothing TODO!";
@@ -47,10 +67,12 @@ class _YataState extends State<Yata> {
           child: const Icon(Icons.clear),
         ),
         onTap: onTap,
-        floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.add),
-            onPressed: () {
-              //showDialogBoxForAddingTODO();
+        floatingActionButton: Consumer<Elements>(
+          builder: (context, elements, child) {
+            return FloatingActionButton(
+              child: const Icon(Icons.add),
+              onPressed: () => showDialogBoxForAddingTODO(elements),
+            );
           },
         ),
       ),
@@ -111,28 +133,16 @@ class _YataState extends State<Yata> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: _title,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: ChangeNotifierProvider<Elements>(
-        create: (context) => Elements(),
-        child: Navigator(
-          pages: pages.toList(),
-          onPopPage: (route, result) {
-            if (!route.didPop(result))
-              return false;
-
-            setState(() {
-              pages.removeLast();
-            });
-
-            return true;
-          },
-        ),
-      ),
+    return Navigator(
+      pages: pages.toList(),
+      onPopPage: (route, result) {
+        if (!route.didPop(result))
+          return false;
+        setState(() {
+          pages.removeLast();
+        });
+        return true;
+      },
     );
   }
 
@@ -146,6 +156,53 @@ class _YataState extends State<Yata> {
           case 2: pages.add(_deletePage); break;
         }
       });
+  }
+
+  showDialogBoxForAddingTODO(elements) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        var textController = TextEditingController();
+
+        return AlertDialog(
+          content: AlertDialogContentContainer(
+            child: TextField(
+              autofocus: true,
+              focusNode: _focus_node,
+              controller: textController,
+              onSubmitted: (_) {addTODO(textController, elements);},
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: "Enter a TODO item",
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                textController.clear();
+              },
+              child: const Text("CANCEL"),
+            ),
+            ElevatedButton(
+              onPressed: () {addTODO(textController, elements);},
+              child: const Text("ADD TODO"),
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  addTODO(textController, elements) {
+    if (textController.text.length > 0) {
+      Navigator.pop(context);
+      elements.addTODO(textController.text);
+      textController.clear();
+    } else {
+      _focus_node.requestFocus();
+    }
   }
 
   /*
@@ -167,41 +224,6 @@ class _YataState extends State<Yata> {
         },
       );
     }
-  }
-
-  showDialogBoxForAddingTODO() async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: AlertDialogContentContainer(
-            child: TextField(
-              autofocus: true,
-              focusNode: _focus_node,
-              controller: _text_controller,
-              onSubmitted: (_) {addTODO();},
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "Enter a TODO item",
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _text_controller.clear();
-              },
-              child: const Text("CANCEL"),
-            ),
-            ElevatedButton(
-              onPressed: () {addTODO();},
-              child: const Text("ADD TODO"),
-            )
-          ],
-        );
-      }
-    );
   }
 
   showDialogBoxForDeletingItemCompletely(int index) async {
@@ -274,18 +296,6 @@ class _YataState extends State<Yata> {
         );
       }
     );
-  }
-
-  addTODO() {
-    setState(() {
-      if (_text_controller.text.length > 0) {
-        Navigator.pop(context);
-        _elements.addTODO(_text_controller.text);
-        _text_controller.clear();
-      } else {
-        _focus_node.requestFocus();
-      }
-    });
   }
 
   deleteCompletely({int index}) {
@@ -383,6 +393,7 @@ class YataPage extends StatelessWidget {
         ),
       ),
       floatingActionButton: floatingActionButton,
+        // this one needs access to elements as well
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: elementsList.index,
         onTap: onTap,
