@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'dart:collection';
 
 void main() {
   runApp(Yata());
@@ -25,13 +26,6 @@ class _YataState extends State<Yata> {
 
   List<MaterialPage> pages;
 
-  // TODO: put this into a Provider thingy and make this thing more
-  //       readable
-  //
-  //       and use navigator to switch between sides rather than
-  //       this index based switch-approach
-  Elements _elements = new Elements();
-
   FocusNode _focus_node;
   int _index = 0;
 
@@ -42,7 +36,7 @@ class _YataState extends State<Yata> {
         index: 0,
         title: "TODO:",
         defaultText: _nothing_todo,
-        elementsList: _elements.todos,
+        elementsList: ElementsList.todos,
         mainButton: YataButtonTemplate(
           action: (int index) => () {
             setState(() {
@@ -69,7 +63,7 @@ class _YataState extends State<Yata> {
         index: 1,
         title: "Done:",
         defaultText: _nothing_done,
-        elementsList: _elements.done,
+        elementsList: ElementsList.done,
         mainButton: YataButtonTemplate(
           action: (int index) => () {
             setState(() {
@@ -96,7 +90,7 @@ class _YataState extends State<Yata> {
         index: 2,
         title: "Deleted:",
         defaultText: _nothing_deleted,
-        elementsList: _elements.deleted,
+        elementsList: ElementsList.deleted,
         mainButton: YataButtonTemplate(
           action: (int index) => () {
             showDialogBoxForDeletingItemCompletely(index);
@@ -138,18 +132,21 @@ class _YataState extends State<Yata> {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: Navigator(
-        pages: pages.sublist(0,pages.length),
-        onPopPage: (route, result) {
-          if (!route.didPop(result))
-            return false;
+      home: ChangeNotifierProvider<Elements>(
+        create: (context) => Elements(),
+        child: Navigator(
+          pages: pages.toList(),
+          onPopPage: (route, result) {
+            if (!route.didPop(result))
+              return false;
 
-          setState(() {
-            pages.removeLast();
-          });
+            setState(() {
+              pages.removeLast();
+            });
 
-          return true;
-        },
+            return true;
+          },
+        ),
       ),
     );
   }
@@ -166,6 +163,7 @@ class _YataState extends State<Yata> {
       });
   }
 
+  /*
   getFloatingActionButton() {
     if (_index == 0) {
       return FloatingActionButton(
@@ -313,6 +311,7 @@ class _YataState extends State<Yata> {
         _elements.deleteCompletely(index);
     });
   }
+  */
 }
 
 class YataPage extends StatelessWidget {
@@ -323,7 +322,7 @@ class YataPage extends StatelessWidget {
   final String title;
   final String defaultText;
 
-  final List<String> elementsList;
+  final ElementsList elementsList;
 
   final YataButtonTemplate mainButton;
   final YataButtonTemplate secondaryButton;
@@ -352,41 +351,47 @@ class YataPage extends StatelessWidget {
               style: Theme.of(context).textTheme.headline3,
             ),
             Expanded(
-              child: elementsList.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
-                controller: _scroll_controller,
-                isAlwaysShown: true,
-                child: ListView.builder(
-                  padding: EdgeInsets.all(16.0),
-                  controller: _scroll_controller,
-                  itemCount: elementsList.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return Container(
-                      child: Padding(
-                        padding: EdgeInsets.all(10.0),
-                        child: Container(
-                          decoration: ShapeDecoration(
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(),
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(20)
+              child: Consumer<Elements>(
+                builder: (context, elements, child) {
+                  final items = elements.getList(elementsList);
+
+                  return items.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
+                    controller: _scroll_controller,
+                    isAlwaysShown: true,
+                    child: ListView.builder(
+                      padding: EdgeInsets.all(16.0),
+                      controller: _scroll_controller,
+                      itemCount: items.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return Container(
+                          child: Padding(
+                            padding: EdgeInsets.all(10.0),
+                            child: Container(
+                              decoration: ShapeDecoration(
+                                shape: RoundedRectangleBorder(
+                                  side: BorderSide(),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(20)
+                                  ),
+                                ),
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Row(
+                                  children: <Widget>[
+                                    Expanded(child: Text(items[index])),
+                                    mainButton.generateElevatedButton(index),
+                                    secondaryButton.generateTextButton(index),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Row(
-                              children: <Widget>[
-                                Expanded(child: Text(elementsList[index])),
-                                mainButton.generateElevatedButton(index),
-                                secondaryButton.generateTextButton(index),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -415,6 +420,7 @@ class YataPage extends StatelessWidget {
   }
 }
 
+// TODO: back to something normal (StatelessWidget)
 class AlertDialogContentContainer extends Container {
   AlertDialogContentContainer({Widget child}) : super(child:child);
 
@@ -431,12 +437,25 @@ class AlertDialogContentContainer extends Container {
   }
 }
 
-class Elements {
+enum ElementsList { todos, done, deleted }
+
+class Elements with ChangeNotifier {
   List<String> todos = [];
   List<String> done = [];
   List<String> deleted = [];
 
-  addTODO(String value) => todos.insert(0, value);
+  getList(ElementsList list) {
+    switch (list) {
+      case ElementsList.todos: return UnmodifiableListView(todos);
+      case ElementsList.done: return UnmodifiableListView(done);
+      case ElementsList.deleted: return UnmodifiableListView(deleted);
+    }
+  }
+
+  addTODO(String value) {
+    todos.insert(0, value);
+    notifyListeners();
+  }
 
   setDone(int index) => _move(todos, done, index);
 
@@ -450,13 +469,18 @@ class Elements {
 
   deleteCompletely(int index) {
     deleted.removeAt(index);
+    notifyListeners();
   }
 
-  deleteAllCompletely() => deleted = [];
+  deleteAllCompletely() {
+    deleted = [];
+    notifyListeners();
+  }
 
   _move(src, dest, int index) {
     dest.insert(0, src[index]);
     src.removeAt(index);
+    notifyListeners();
   }
 }
 
