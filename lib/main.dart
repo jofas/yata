@@ -27,30 +27,21 @@ class _YataState extends State<Yata> {
   List<MaterialPage> pages;
 
   FocusNode _focus_node;
-  int _index = 0;
+  int _index = 0; // TODO: this into Provider-Consumer Pattern as well
 
   _YataState() {
     _todoPage = MaterialPage(
       maintainState: false,
       child: YataPage(
-        index: 0,
         title: "TODO:",
         defaultText: _nothing_todo,
         elementsList: ElementsList.todos,
         mainButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.setDone(index);
-            });
-          },
+          action: (elements, int index) => elements.setDone(index),
           child: const Icon(Icons.check),
         ),
         secondaryButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.setTODODeleted(index);
-            });
-          },
+          action: (elements, int index) => elements.setTODODeleted(index),
           child: const Icon(Icons.clear),
         ),
         onTap: onTap,
@@ -60,24 +51,15 @@ class _YataState extends State<Yata> {
     _donePage = MaterialPage(
       maintainState: false,
       child: YataPage(
-        index: 1,
         title: "Done:",
         defaultText: _nothing_done,
         elementsList: ElementsList.done,
         mainButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.setDoneDeleted(index);
-            });
-          },
+          action: (elements, int index) => elements.setDoneDeleted(index),
           child: const Icon(Icons.clear),
         ),
         secondaryButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.unsetDone(index);
-            });
-          },
+          action: (elements, int index) => elements.unsetDone(index),
           child: const Icon(Icons.restore),
         ),
         onTap: onTap,
@@ -87,22 +69,17 @@ class _YataState extends State<Yata> {
     _deletePage = MaterialPage(
       maintainState: false,
       child: YataPage(
-        index: 2,
         title: "Deleted:",
         defaultText: _nothing_deleted,
         elementsList: ElementsList.deleted,
         mainButton: YataButtonTemplate(
-          action: (int index) => () {
-            showDialogBoxForDeletingItemCompletely(index);
+          action: (elements, int index) => () {
+            //showDialogBoxForDeletingItemCompletely(index);
           },
           child: const Icon(Icons.delete),
         ),
         secondaryButton: YataButtonTemplate(
-          action: (int index) => () {
-            setState(() {
-              _elements.unsetDeleted(index);
-            });
-          },
+          action: (elements, int index) => elements.unsetDeleted(index),
           child: const Icon(Icons.restore),
         ),
         onTap: onTap,
@@ -317,8 +294,6 @@ class _YataState extends State<Yata> {
 class YataPage extends StatelessWidget {
   final _scroll_controller = new ScrollController();
 
-  final int index;
-
   final String title;
   final String defaultText;
 
@@ -330,7 +305,6 @@ class YataPage extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   YataPage({
-    this.index,
     this.title,
     this.defaultText,
     this.elementsList,
@@ -380,8 +354,8 @@ class YataPage extends StatelessWidget {
                                 child: Row(
                                   children: <Widget>[
                                     Expanded(child: Text(items[index])),
-                                    mainButton.generateElevatedButton(index),
-                                    secondaryButton.generateTextButton(index),
+                                    mainButton.generateElevatedButton(elements, index),
+                                    secondaryButton.generateTextButton(elements, index),
                                   ],
                                 ),
                               ),
@@ -399,7 +373,7 @@ class YataPage extends StatelessWidget {
       ),
       //floatingActionButton: getFloatingActionButton(),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: index,
+        currentIndex: elementsList.index,
         onTap: onTap,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -484,24 +458,22 @@ class Elements with ChangeNotifier {
   }
 }
 
-typedef YataButtonAction = Null Function() Function(int);
-
 class YataButtonTemplate {
   final Widget child;
-  final YataButtonAction action;
+  final Function(Elements, int) action;
 
   YataButtonTemplate({this.child, this.action});
 
-  generateElevatedButton(int index) {
+  generateElevatedButton(elements, int index) {
     return ElevatedButton(
-      onPressed: action(index),
+      onPressed: () => action(elements, index),
       child: child,
     );
   }
 
-  generateTextButton(int index) {
+  generateTextButton(elements, int index) {
     return TextButton(
-      onPressed: action(index),
+      onPressed: () => action(elements, index),
       child: child,
     );
   }
