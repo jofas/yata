@@ -1,24 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  final String title = "yata";
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: title,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: Yata(),
-    );
-  }
+  runApp(Yata());
 }
 
 class Yata extends StatefulWidget {
@@ -27,12 +12,18 @@ class Yata extends StatefulWidget {
 }
 
 class _YataState extends State<Yata> {
+  static const String _title = "yata";
+
   final _text_controller = new TextEditingController();
   final _scroll_controller = new ScrollController();
 
   static const _nothing_todo = "Great! Nothing TODO!";
   static const _nothing_done = "Oh! You haven't done anything yet!";
   static const _nothing_deleted = "There is nothing here!";
+
+  MaterialPage _todoPage, _donePage, _deletePage;
+
+  List<MaterialPage> pages;
 
   // TODO: put this into a Provider thingy and make this thing more
   //       readable
@@ -44,52 +35,11 @@ class _YataState extends State<Yata> {
   FocusNode _focus_node;
   int _index = 0;
 
-  @override
-  initState() {
-    super.initState();
-    _focus_node = new FocusNode();
-  }
-
-  @override
-  dispse() {
-    _focus_node.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: getCurrentPage(),
-      ),
-      floatingActionButton: getFloatingActionButton(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (int index) {
-          setState(() {_index = index;});
-        },
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.format_list_bulleted),
-            label: "TODOs",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check),
-            label: "Done",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.delete),
-            label: "Bin",
-          ),
-        ],
-      ),
-    );
-  }
-
-  getCurrentPage() {
-    switch (_index) {
-      case 0: return YataPage(
+  _YataState() {
+    _todoPage = MaterialPage(
+      maintainState: false,
+      child: YataPage(
+        index: 0,
         title: "TODO:",
         defaultText: _nothing_todo,
         elementsList: _elements.todos,
@@ -109,8 +59,14 @@ class _YataState extends State<Yata> {
           },
           child: const Icon(Icons.clear),
         ),
-      );
-      case 1: return YataPage(
+        onTap: onTap,
+      ),
+    );
+
+    _donePage = MaterialPage(
+      maintainState: false,
+      child: YataPage(
+        index: 1,
         title: "Done:",
         defaultText: _nothing_done,
         elementsList: _elements.done,
@@ -130,8 +86,14 @@ class _YataState extends State<Yata> {
           },
           child: const Icon(Icons.restore),
         ),
-      );
-      case 2: return YataPage(
+        onTap: onTap,
+      ),
+    );
+
+    _deletePage = MaterialPage(
+      maintainState: false,
+      child: YataPage(
+        index: 2,
         title: "Deleted:",
         defaultText: _nothing_deleted,
         elementsList: _elements.deleted,
@@ -149,8 +111,59 @@ class _YataState extends State<Yata> {
           },
           child: const Icon(Icons.restore),
         ),
-      );
-    }
+        onTap: onTap,
+      ),
+    );
+
+    pages = [_todoPage];
+  }
+
+  @override
+  initState() {
+    super.initState();
+    _focus_node = new FocusNode();
+  }
+
+  @override
+  dispse() {
+    _focus_node.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: _title,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: Navigator(
+        pages: pages.sublist(0,pages.length),
+        onPopPage: (route, result) {
+          if (!route.didPop(result))
+            return false;
+
+          setState(() {
+            pages.removeLast();
+          });
+
+          return true;
+        },
+      ),
+    );
+  }
+
+  onTap(int index) {
+    if (_index != index)
+      setState(() {
+        _index = index;
+        switch (_index) {
+          case 0: pages.add(_todoPage); break;
+          case 1: pages.add(_donePage); break;
+          case 2: pages.add(_deletePage); break;
+        }
+      });
   }
 
   getFloatingActionButton() {
@@ -305,6 +318,8 @@ class _YataState extends State<Yata> {
 class YataPage extends StatelessWidget {
   final _scroll_controller = new ScrollController();
 
+  final int index;
+
   final String title;
   final String defaultText;
 
@@ -313,61 +328,89 @@ class YataPage extends StatelessWidget {
   final YataButtonTemplate mainButton;
   final YataButtonTemplate secondaryButton;
 
+  final ValueChanged<int> onTap;
+
   YataPage({
+    this.index,
     this.title,
     this.defaultText,
     this.elementsList,
     this.mainButton,
-    this.secondaryButton});
+    this.secondaryButton,
+    this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headline3,
-        ),
-        Expanded(
-          child: elementsList.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
-            controller: _scroll_controller,
-            isAlwaysShown: true,
-            child: ListView.builder(
-              padding: EdgeInsets.all(16.0),
-              controller: _scroll_controller,
-              itemCount: elementsList.length,
-              itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  child: Padding(
-                    padding: EdgeInsets.all(10.0),
-                    child: Container(
-                      decoration: ShapeDecoration(
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(),
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(20)
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headline3,
+            ),
+            Expanded(
+              child: elementsList.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
+                controller: _scroll_controller,
+                isAlwaysShown: true,
+                child: ListView.builder(
+                  padding: EdgeInsets.all(16.0),
+                  controller: _scroll_controller,
+                  itemCount: elementsList.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    return Container(
+                      child: Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: Container(
+                          decoration: ShapeDecoration(
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(20)
+                              ),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(child: Text(elementsList[index])),
+                                mainButton.generateElevatedButton(index),
+                                secondaryButton.generateTextButton(index),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(child: Text(elementsList[index])),
-                            mainButton.generateElevatedButton(index),
-                            secondaryButton.generateTextButton(index),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
+      //floatingActionButton: getFloatingActionButton(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: index,
+        onTap: onTap,
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.format_list_bulleted),
+            label: "TODOs",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check),
+            label: "Done",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.delete),
+            label: "Bin",
+          ),
+        ],
+      ),
     );
   }
 }
