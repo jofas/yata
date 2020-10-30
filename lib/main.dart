@@ -46,7 +46,7 @@ class _YataState extends State<Yata> {
   FocusNode _focus_node;
   int _index = 0; // TODO: this into Provider-Consumer Pattern as well
                   // then I should be able to remove onTap from
-                  // YataPage as well
+                  // YataPage as well (and make Yata stateless)
 
   _YataState() {
     _todoPage = MaterialPage(
@@ -414,40 +414,40 @@ class AlertDialogContentContainer extends Container {
 enum ElementsList { todos, done, deleted }
 
 class Elements with ChangeNotifier {
-  List<String> todos = [];
-  List<String> done = [];
-  List<String> deleted = [];
+  List<String> _todos = [];
+  List<String> _done = [];
+  List<String> _deleted = [];
 
   getList(ElementsList list) {
     switch (list) {
-      case ElementsList.todos: return UnmodifiableListView(todos);
-      case ElementsList.done: return UnmodifiableListView(done);
-      case ElementsList.deleted: return UnmodifiableListView(deleted);
+      case ElementsList.todos: return UnmodifiableListView(_todos);
+      case ElementsList.done: return UnmodifiableListView(_done);
+      case ElementsList.deleted: return UnmodifiableListView(_deleted);
     }
   }
 
   addTODO(String value) {
-    todos.insert(0, value);
+    _todos.insert(0, value);
     notifyListeners();
   }
 
-  setDone(int index) => _move(todos, done, index);
+  setDone(int index) => _move(_todos, _done, index);
 
-  unsetDone(int index) => _move(done, todos, index);
+  unsetDone(int index) => _move(_done, _todos, index);
 
-  setTODODeleted(int index) => _move(todos, deleted, index);
+  setTODODeleted(int index) => _move(_todos, _deleted, index);
 
-  setDoneDeleted(int index) => _move(done, deleted, index);
+  setDoneDeleted(int index) => _move(_done, _deleted, index);
 
-  unsetDeleted(int index) => _move(deleted, todos, index);
+  unsetDeleted(int index) => _move(_deleted, _todos, index);
 
   deleteCompletely(int index) {
-    deleted.removeAt(index);
+    _deleted.removeAt(index);
     notifyListeners();
   }
 
   deleteAllCompletely() {
-    deleted = [];
+    _deleted = [];
     notifyListeners();
   }
 
