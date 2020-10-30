@@ -35,12 +35,9 @@ class Yata extends StatefulWidget {
 class _YataState extends State<Yata> {
   static const String _title = "yata";
 
-  //final _text_controller = new TextEditingController();
-  final _scroll_controller = new ScrollController();
-
-  static const _nothing_todo = "Great! Nothing TODO!";
-  static const _nothing_done = "Oh! You haven't done anything yet!";
-  static const _nothing_deleted = "There is nothing here!";
+  static const _nothingTodo = "Great! Nothing TODO!";
+  static const _nothingDone = "Oh! You haven't done anything yet!";
+  static const _nothingDeleted = "There is nothing here!";
 
   MaterialPage _todoPage, _donePage, _deletePage;
 
@@ -56,7 +53,7 @@ class _YataState extends State<Yata> {
       maintainState: false,
       child: YataPage(
         title: "TODO:",
-        defaultText: _nothing_todo,
+        defaultText: _nothingTodo,
         elementsList: ElementsList.todos,
         mainButton: YataButtonTemplate(
           action: (elements, int index) => elements.setDone(index),
@@ -82,7 +79,7 @@ class _YataState extends State<Yata> {
       maintainState: false,
       child: YataPage(
         title: "Done:",
-        defaultText: _nothing_done,
+        defaultText: _nothingDone,
         elementsList: ElementsList.done,
         mainButton: YataButtonTemplate(
           action: (elements, int index) => elements.setDoneDeleted(index),
@@ -100,7 +97,7 @@ class _YataState extends State<Yata> {
       maintainState: false,
       child: YataPage(
         title: "Deleted:",
-        defaultText: _nothing_deleted,
+        defaultText: _nothingDeleted,
         elementsList: ElementsList.deleted,
         mainButton: YataButtonTemplate(
           action: (elements, int index) {
@@ -288,33 +285,10 @@ class _YataState extends State<Yata> {
       elements.deleteAllCompletely() :
       elements.deleteCompletely(index);
   }
-
-  /*
-  getFloatingActionButton() {
-    if (_index == 0) {
-      return FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          showDialogBoxForAddingTODO();
-        },
-      );
-    }
-
-    if (_index == 2 && _elements.deleted.length > 0) {
-      return FloatingActionButton(
-        child: const Icon(Icons.delete),
-        onPressed: () {
-          showDialogBoxForDeletingAllItemsCompletely();
-        },
-      );
-    }
-  }
-
-  */
 }
 
 class YataPage extends StatelessWidget {
-  final _scroll_controller = new ScrollController();
+  final _scrollController = new ScrollController();
 
   final String title;
   final String defaultText;
@@ -355,11 +329,11 @@ class YataPage extends StatelessWidget {
                   final items = elements.getList(elementsList);
 
                   return items.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
-                    controller: _scroll_controller,
+                    controller: _scrollController,
                     isAlwaysShown: true,
                     child: ListView.builder(
                       padding: EdgeInsets.all(16.0),
-                      controller: _scroll_controller,
+                      controller: _scrollController,
                       itemCount: items.length,
                       itemBuilder: (BuildContext context, int index) {
                         return Container(
