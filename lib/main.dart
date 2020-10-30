@@ -289,13 +289,8 @@ class YataScreen extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: elementsList.index,
         onTap: (int index) {
-          if (index != elementsList.index) {
-            switch (index) {
-              case 0: Get.toNamed("/"); break;
-              case 1: Get.toNamed("/done"); break;
-              case 2: Get.toNamed("/bin"); break;
-            }
-          }
+          if (index != elementsList.index)
+            controller.routeByIndex(index);
         },
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -316,29 +311,30 @@ class YataScreen extends StatelessWidget {
   }
 }
 
-// TODO: back to something normal (StatelessWidget)
-class AlertDialogContentContainer extends Container {
-  AlertDialogContentContainer({Widget child}) : super(child:child);
+class AlertDialogContentContainer extends StatelessWidget {
+  final Widget child;
 
-  @override
-  BoxConstraints constraints;
+  AlertDialogContentContainer({this.child});
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    this.constraints = BoxConstraints.tightFor(
-      width: width > 600.0 ? 600.0 : width
-    );
-    return super.build(context);
+    final width = Get.width > 600.0 ? 600.0 : Get.width;
+    return Container(child: child, width: width);
   }
 }
-
-enum ElementsList { todos, done, deleted }
 
 class ElementsController extends GetxController {
   final elements = Elements().obs;
 
   getList(ElementsList list) => elements.value.getList(list);
+
+  routeByIndex(int index) {
+    switch (index) {
+      case 0: Get.toNamed("/todo"); break;
+      case 1: Get.toNamed("/done"); break;
+      case 2: Get.toNamed("/bin"); break;
+    }
+  }
 
   addTODO(String value) {
     elements.value.addTODO(value);
@@ -380,6 +376,8 @@ class ElementsController extends GetxController {
     elements.refresh();
   }
 }
+
+enum ElementsList { todos, done, deleted }
 
 class Elements {
   List<String> _todos = [];
