@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:collection';
+import 'package:get/get.dart';
 
 void main() {
   runApp(YataApp());
@@ -12,95 +13,34 @@ class YataApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: title,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<Elements>(create: (_) => Elements()),
-          ChangeNotifierProvider<IndexChangeNotifier>(create: (_) => IndexChangeNotifier()),
-        ],
-        child: Yata(),
-      ),
-    );
-  }
-}
-
-class Yata extends StatefulWidget {
-  @override
-  _YataState createState() => _YataState();
-}
-
-class _YataState extends State<Yata> {
-  static const _nothingTodo = "Great! Nothing TODO!";
-  static const _nothingDone = "Oh! You haven't done anything yet!";
-  static const _nothingDeleted = "There is nothing here!";
-
-  MaterialPage _todoPage, _donePage, _deletePage;
-
-  List<MaterialPage> pages; // into ChangeNotifier as well
-
-  FocusNode _focus_node;
-
-  _YataState() {
-    _todoPage = MaterialPage(
-      maintainState: false,
-      child: YataTODOScreen(),
-    );
-
-    _donePage = MaterialPage(
-      maintainState: false,
-      child: YataDoneScreen(),
-    );
-
-    _deletePage = MaterialPage(
-      maintainState: false,
-      child: YataDeleteScreen(),
-    );
-
-    pages = [_todoPage];
-  }
-
-  @override
-  initState() {
-    super.initState();
-    _focus_node = new FocusNode();
-  }
-
-  @override
-  dispose() {
-    _focus_node.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<IndexChangeNotifier>(
-      builder: (context, indexChangeNotifier, child) {
-        switch (indexChangeNotifier.index) {
-          case 0: pages.add(_todoPage); break;
-          case 1: pages.add(_donePage); break;
-          case 2: pages.add(_deletePage); break;
-        }
-
-        return Navigator(
-          pages: pages.toList(),
-          onPopPage: (route, result) {
-            if (!route.didPop(result))
-              return false;
-            pages.removeLast();
-            return true;
-          },
-        );
-      },
+      initialRoute: "/",
+      getPages: [
+        GetPage(name: "/", page: () => YataTODOScreen()),
+        GetPage(name: "/todo", page: () => YataTODOScreen()),
+        GetPage(name: "/done", page: () => YataDoneScreen()),
+        GetPage(name: "/bin", page: () => YataDeleteScreen()),
+      ],
     );
   }
 }
 
 class YataTODOScreen extends StatelessWidget {
+  ElementsController controller;
+
+  YataTODOScreen() {
+    try {
+      controller = Get.find();
+    } catch (_) {
+      controller = Get.put(ElementsController());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return YataScreen(
@@ -108,73 +48,71 @@ class YataTODOScreen extends StatelessWidget {
       defaultText: "Great! Nothing TODO!",
       elementsList: ElementsList.todos,
       mainButton: YataButtonTemplate(
-        action: (elements, int index) => elements.setDone(index),
+        action: (int index) => controller.setDone(index),
         child: const Icon(Icons.check),
       ),
       secondaryButton: YataButtonTemplate(
-        action: (elements, int index) => elements.setTODODeleted(index),
+        action: (int index) => controller.setTODODeleted(index),
         child: const Icon(Icons.clear),
       ),
-      floatingActionButton: Consumer<Elements>(
-        builder: (context, elements, child) {
-          return FloatingActionButton(
-            child: const Icon(Icons.add),
-            onPressed: () => showDialogBoxForAddingTODO(context, elements),
-          );
-        },
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () => Get.dialog(dialogForAddingTODO()),
       ),
     );
   }
 
-  showDialogBoxForAddingTODO(context, elements) async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        var textController = TextEditingController();
-        var focusNode = FocusNode();
-        var addTODO = () {
-          if (textController.text.length > 0) {
-            Navigator.pop(context);
-            elements.addTODO(textController.text);
-            textController.clear();
-          } else {
-            focusNode.requestFocus();
-          }
-        };
+  dialogForAddingTODO() {
+    var textController = TextEditingController();
+    var focusNode = FocusNode();
 
-        return AlertDialog(
-          content: AlertDialogContentContainer(
-            child: TextField(
-              autofocus: true,
-              focusNode: focusNode,
-              controller: textController,
-              onSubmitted: (_) => addTODO(),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "Enter a TODO item",
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                textController.clear();
-              },
-              child: const Text("CANCEL"),
-            ),
-            ElevatedButton(
-              onPressed: () => addTODO(),
-              child: const Text("ADD TODO"),
-            )
-          ],
-        );
+    var addTODO = () {
+      if (textController.text.length > 0) {
+        controller.addTODO(textController.text);
+        Get.back();
+      } else {
+        focusNode.requestFocus();
       }
+    };
+
+    return AlertDialog(
+      content: AlertDialogContentContainer(
+        child: TextField(
+          autofocus: true,
+          focusNode: focusNode,
+          controller: textController,
+          onSubmitted: (_) => addTODO(),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: "Enter a TODO item",
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Get.back(),
+          child: const Text("CANCEL"),
+        ),
+        ElevatedButton(
+          onPressed: () => addTODO(),
+          child: const Text("ADD TODO"),
+        )
+      ],
     );
   }
 }
 
 class YataDoneScreen extends StatelessWidget {
+  ElementsController controller;
+
+  YataDoneScreen() {
+    try {
+      controller = Get.find();
+    } catch (_) {
+      controller = Get.put(ElementsController());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return YataScreen(
@@ -182,11 +120,11 @@ class YataDoneScreen extends StatelessWidget {
       defaultText: "Oh! You haven't done anything yet!",
       elementsList: ElementsList.done,
       mainButton: YataButtonTemplate(
-        action: (elements, int index) => elements.setDoneDeleted(index),
+        action: (int index) => controller.setDoneDeleted(index),
         child: const Icon(Icons.clear),
       ),
       secondaryButton: YataButtonTemplate(
-        action: (elements, int index) => elements.unsetDone(index),
+        action: (int index) => controller.unsetDone(index),
         child: const Icon(Icons.restore),
       ),
     );
@@ -194,6 +132,16 @@ class YataDoneScreen extends StatelessWidget {
 }
 
 class YataDeleteScreen extends StatelessWidget {
+  ElementsController controller;
+
+  YataDeleteScreen() {
+    try {
+      controller = Get.find();
+    } catch (_) {
+      controller = Get.put(ElementsController());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return YataScreen(
@@ -201,72 +149,61 @@ class YataDeleteScreen extends StatelessWidget {
       defaultText: "There is nothing here!",
       elementsList: ElementsList.deleted,
       mainButton: YataButtonTemplate(
-        action: (elements, int index) {
-          showDialogBoxForDeleting(context, elements, index: index);
-        },
+        action: (int index) => Get.dialog(dialogForDeleting(index: index)),
         child: const Icon(Icons.delete),
       ),
       secondaryButton: YataButtonTemplate(
-        action: (elements, int index) => elements.unsetDeleted(index),
+        action: (int index) => controller.unsetDeleted(index),
         child: const Icon(Icons.restore),
       ),
-      floatingActionButton: Consumer<Elements>(
-        builder: (context, elements, child) {
-          if (elements.getList(ElementsList.deleted).length == 0)
-            return Container();
-
-          return FloatingActionButton(
+      floatingActionButton: Obx(() =>
+        controller.getList(ElementsList.deleted).length > 0 ?
+          FloatingActionButton(
             child: const Icon(Icons.delete),
-            onPressed: () => showDialogBoxForDeleting(context, elements),
-          );
-        },
+            onPressed: () => Get.dialog(dialogForDeleting()),
+          ) : Container()),
+    );
+  }
+
+  dialogForDeleting({int index: null}) {
+    var focusNode = FocusNode();
+
+    var deleteCompletely = () {
+      index == null ?
+        controller.deleteAllCompletely() : controller.deleteCompletely(index);
+      Get.back();
+    };
+
+    return RawKeyboardListener(
+      focusNode: focusNode,
+      autofocus: true,
+      onKey: (RawKeyEvent event) {
+        if (event.logicalKey == LogicalKeyboardKey.enter)
+          deleteCompletely();
+      },
+      child: AlertDialog(
+        content: AlertDialogContentContainer(
+          child: index == null ?
+            Text("Are you sure you want to delete all items in the bin?") :
+            Text("Are you sure you want to delete this item?"),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("CANCEL"),
+          ),
+          ElevatedButton(
+            onPressed: () => deleteCompletely(),
+            child: const Text("DELETE"),
+          )
+        ],
       ),
     );
   }
-
-  showDialogBoxForDeleting(context, elements, {int index: null}) async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        var focusNode = FocusNode();
-        var deleteCompletely = () {
-          Navigator.pop(context);
-          index == null ?
-            elements.deleteAllCompletely() : elements.deleteCompletely(index);
-        };
-
-        return RawKeyboardListener(
-          focusNode: focusNode,
-          autofocus: true,
-          onKey: (RawKeyEvent event) {
-            if (event.logicalKey == LogicalKeyboardKey.enter)
-              deleteCompletely();
-          },
-          child: AlertDialog(
-            content: AlertDialogContentContainer(
-              child: index == null ?
-                Text("Are you sure you want to delete all items in the bin?") :
-                Text("Are you sure you want to delete this item?"),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("CANCEL"),
-              ),
-              ElevatedButton(
-                onPressed: () => deleteCompletely(),
-                child: const Text("DELETE"),
-              )
-            ],
-          ),
-        );
-      }
-    );
-  }
-
 }
 
 class YataScreen extends StatelessWidget {
+  final ElementsController controller = Get.find();
   final _scrollController = new ScrollController();
 
   final String title;
@@ -303,76 +240,77 @@ class YataScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.headline3,
             ),
             Expanded(
-              child: Consumer<Elements>(
-                builder: (context, elements, child) {
-                  final items = elements.getList(elementsList);
+              child: Obx(() {
+                var items = controller.getList(elementsList);
+                var len = items.length;
 
-                  return items.length == 0 ? Center(child: Text(defaultText)) : Scrollbar(
+                return len == 0 ? Center(child: Text(defaultText)) : Scrollbar(
+                  controller: _scrollController,
+                  isAlwaysShown: true,
+                  child: ListView.builder(
+                    padding: EdgeInsets.all(16.0),
                     controller: _scrollController,
-                    isAlwaysShown: true,
-                    child: ListView.builder(
-                      padding: EdgeInsets.all(16.0),
-                      controller: _scrollController,
-                      itemCount: items.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        return Container(
-                          child: Padding(
-                            padding: EdgeInsets.all(10.0),
-                            child: Container(
-                              decoration: ShapeDecoration(
-                                shape: RoundedRectangleBorder(
-                                  side: BorderSide(),
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(20)
-                                  ),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: <Widget>[
-                                    Expanded(child: Text(items[index])),
-                                    mainButton.generateElevatedButton(elements, index),
-                                    secondaryButton.generateTextButton(elements, index),
-                                  ],
+                    itemCount: len,
+                    itemBuilder: (BuildContext context, int index) {
+                      return Container(
+                        child: Padding(
+                          padding: EdgeInsets.all(10.0),
+                          child: Container(
+                            decoration: ShapeDecoration(
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(20)
                                 ),
                               ),
                             ),
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Row(
+                                children: <Widget>[
+                                  Expanded(child: Text(items[index])),
+                                  mainButton.generateElevatedButton(index),
+                                  secondaryButton.generateTextButton(index),
+                                ],
+                              ),
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
             ),
           ],
         ),
       ),
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: Consumer<IndexChangeNotifier>(
-        builder: (context, indexChangeNotifier, child) {
-          return BottomNavigationBar(
-            currentIndex: elementsList.index,
-            onTap: (int index) {
-              indexChangeNotifier.notifyIfChanged(index);
-            },
-            items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: Icon(Icons.format_list_bulleted),
-                label: "TODOs",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.check),
-                label: "Done",
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.delete),
-                label: "Bin",
-              ),
-            ],
-          );
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: elementsList.index,
+        onTap: (int index) {
+          if (index != elementsList.index) {
+            switch (index) {
+              case 0: Get.toNamed("/"); break;
+              case 1: Get.toNamed("/done"); break;
+              case 2: Get.toNamed("/bin"); break;
+            }
+          }
         },
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.format_list_bulleted),
+            label: "TODOs",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check),
+            label: "Done",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.delete),
+            label: "Bin",
+          ),
+        ],
       ),
     );
   }
@@ -397,7 +335,53 @@ class AlertDialogContentContainer extends Container {
 
 enum ElementsList { todos, done, deleted }
 
-class Elements with ChangeNotifier {
+class ElementsController extends GetxController {
+  final elements = Elements().obs;
+
+  getList(ElementsList list) => elements.value.getList(list);
+
+  addTODO(String value) {
+    elements.value.addTODO(value);
+    elements.refresh();
+  }
+
+  setDone(int index) {
+    elements.value.setDone(index);
+    elements.refresh();
+  }
+
+  unsetDone(int index) {
+    elements.value.unsetDone(index);
+    elements.refresh();
+  }
+
+  setTODODeleted(int index) {
+    elements.value.setTODODeleted(index);
+    elements.refresh();
+  }
+
+  setDoneDeleted(int index) {
+    elements.value.setDoneDeleted(index);
+    elements.refresh();
+  }
+
+  unsetDeleted(int index) {
+    elements.value.unsetDeleted(index);
+    elements.refresh();
+  }
+
+  deleteCompletely(int index) {
+    elements.value.deleteCompletely(index);
+    elements.refresh();
+  }
+
+  deleteAllCompletely() {
+    elements.value.deleteAllCompletely();
+    elements.refresh();
+  }
+}
+
+class Elements {
   List<String> _todos = [];
   List<String> _done = [];
   List<String> _deleted = [];
@@ -412,63 +396,44 @@ class Elements with ChangeNotifier {
 
   addTODO(String value) {
     _todos.insert(0, value);
-    notifyListeners();
   }
 
   setDone(int index) => _move(_todos, _done, index);
-
   unsetDone(int index) => _move(_done, _todos, index);
-
   setTODODeleted(int index) => _move(_todos, _deleted, index);
-
   setDoneDeleted(int index) => _move(_done, _deleted, index);
-
   unsetDeleted(int index) => _move(_deleted, _todos, index);
 
   deleteCompletely(int index) {
     _deleted.removeAt(index);
-    notifyListeners();
   }
 
   deleteAllCompletely() {
     _deleted = [];
-    notifyListeners();
   }
 
   _move(src, dest, int index) {
     dest.insert(0, src[index]);
     src.removeAt(index);
-    notifyListeners();
-  }
-}
-
-class IndexChangeNotifier with ChangeNotifier {
-  int index = 0;
-
-  notifyIfChanged(int newIndex) {
-    if (index != newIndex) {
-      index = newIndex;
-      notifyListeners();
-    }
   }
 }
 
 class YataButtonTemplate {
   final Widget child;
-  final Function(Elements, int) action;
+  final Function(int) action;
 
   YataButtonTemplate({this.child, this.action});
 
-  generateElevatedButton(elements, int index) {
+  generateElevatedButton(int index) {
     return ElevatedButton(
-      onPressed: () => action(elements, index),
+      onPressed: () => action(index),
       child: child,
     );
   }
 
-  generateTextButton(elements, int index) {
+  generateTextButton(int index) {
     return TextButton(
-      onPressed: () => action(elements, index),
+      onPressed: () => action(index),
       child: child,
     );
   }
