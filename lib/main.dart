@@ -103,8 +103,8 @@ class _YataState extends State<Yata> {
         defaultText: _nothing_deleted,
         elementsList: ElementsList.deleted,
         mainButton: YataButtonTemplate(
-          action: (elements, int index) => () {
-            //showDialogBoxForDeletingItemCompletely(index);
+          action: (elements, int index) {
+            showDialogBoxForDeletingItemCompletely(elements, index);
           },
           child: const Icon(Icons.delete),
         ),
@@ -195,6 +195,37 @@ class _YataState extends State<Yata> {
     );
   }
 
+  showDialogBoxForDeletingItemCompletely(elements, int index) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return RawKeyboardListener(
+          focusNode: _focus_node,
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event.logicalKey == LogicalKeyboardKey.enter)
+              deleteCompletely(elements, index: index);
+          },
+          child: AlertDialog(
+            content: AlertDialogContentContainer(
+              child: Text("Are you sure you want to delete this item?"),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("CANCEL"),
+              ),
+              ElevatedButton(
+                onPressed: () => deleteCompletely(elements, index: index),
+                child: const Text("DELETE"),
+              )
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   addTODO(textController, elements) {
     if (textController.text.length > 0) {
       Navigator.pop(context);
@@ -203,6 +234,13 @@ class _YataState extends State<Yata> {
     } else {
       _focus_node.requestFocus();
     }
+  }
+
+  deleteCompletely(elements, {int index}) {
+    Navigator.pop(context);
+    index == null ?
+      elements.deleteAllCompletely() :
+      elements.deleteCompletely(index);
   }
 
   /*
@@ -224,42 +262,6 @@ class _YataState extends State<Yata> {
         },
       );
     }
-  }
-
-  showDialogBoxForDeletingItemCompletely(int index) async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return RawKeyboardListener(
-          focusNode: _focus_node,
-          autofocus: true,
-          onKey: (RawKeyEvent event) {
-            if (event.logicalKey == LogicalKeyboardKey.enter)
-              deleteCompletely(index: index);
-          },
-          child: AlertDialog(
-            content: AlertDialogContentContainer(
-              child: Text("Are you sure you want to delete this item?"),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _text_controller.clear();
-                },
-                child: const Text("CANCEL"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  deleteCompletely(index: index);
-                },
-                child: const Text("DELETE"),
-              )
-            ],
-          ),
-        );
-      }
-    );
   }
 
   showDialogBoxForDeletingAllItemsCompletely() async {
@@ -298,14 +300,6 @@ class _YataState extends State<Yata> {
     );
   }
 
-  deleteCompletely({int index}) {
-    setState(() {
-      Navigator.pop(context);
-      index == null ?
-        _elements.deleteAllCompletely() :
-        _elements.deleteCompletely(index);
-    });
-  }
   */
 }
 
