@@ -113,6 +113,17 @@ class _YataState extends State<Yata> {
           child: const Icon(Icons.restore),
         ),
         onTap: onTap,
+        floatingActionButton: Consumer<Elements>(
+          builder: (context, elements, child) {
+            if (elements.getList(ElementsList.deleted).length == 0)
+              return Container();
+
+            return FloatingActionButton(
+              child: const Icon(Icons.delete),
+              onPressed: () => showDialogBoxForDeletingAllItemsCompletely(elements),
+            );
+          },
+        ),
       ),
     );
 
@@ -226,6 +237,41 @@ class _YataState extends State<Yata> {
     );
   }
 
+  showDialogBoxForDeletingAllItemsCompletely(elements) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return RawKeyboardListener(
+          focusNode: _focus_node,
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event.logicalKey == LogicalKeyboardKey.enter)
+              deleteCompletely(elements);
+          },
+          child: AlertDialog(
+            content: AlertDialogContentContainer(
+              child: Text("Are you sure you want to delete all items in the bin?"),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text("CANCEL"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  deleteCompletely(elements);
+                },
+                child: const Text("DELETE"),
+              )
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   addTODO(textController, elements) {
     if (textController.text.length > 0) {
       Navigator.pop(context);
@@ -262,42 +308,6 @@ class _YataState extends State<Yata> {
         },
       );
     }
-  }
-
-  showDialogBoxForDeletingAllItemsCompletely() async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return RawKeyboardListener(
-          focusNode: _focus_node,
-          autofocus: true,
-          onKey: (RawKeyEvent event) {
-            if (event.logicalKey == LogicalKeyboardKey.enter)
-              deleteCompletely();
-          },
-          child: AlertDialog(
-            content: AlertDialogContentContainer(
-              child: Text("Are you sure you want to delete all items in the bin?"),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _text_controller.clear();
-                },
-                child: const Text("CANCEL"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  deleteCompletely();
-                },
-                child: const Text("DELETE"),
-              )
-            ],
-          ),
-        );
-      }
-    );
   }
 
   */
