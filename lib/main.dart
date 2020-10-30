@@ -41,14 +41,14 @@ class _YataState extends State<Yata> {
 
   MaterialPage _todoPage, _donePage, _deletePage;
 
-  List<MaterialPage> pages;
+  List<MaterialPage> pages; // into ChangeNotifier as well
 
   FocusNode _focus_node;
 
   _YataState() {
     _todoPage = MaterialPage(
       maintainState: false,
-      child: YataPage(
+      child: YataScreen(
         title: "TODO:",
         defaultText: _nothingTodo,
         elementsList: ElementsList.todos,
@@ -73,7 +73,7 @@ class _YataState extends State<Yata> {
 
     _donePage = MaterialPage(
       maintainState: false,
-      child: YataPage(
+      child: YataScreen(
         title: "Done:",
         defaultText: _nothingDone,
         elementsList: ElementsList.done,
@@ -90,7 +90,7 @@ class _YataState extends State<Yata> {
 
     _deletePage = MaterialPage(
       maintainState: false,
-      child: YataPage(
+      child: YataScreen(
         title: "Deleted:",
         defaultText: _nothingDeleted,
         elementsList: ElementsList.deleted,
@@ -277,7 +277,7 @@ class _YataState extends State<Yata> {
   }
 }
 
-class YataPage extends StatelessWidget {
+class YataScreen extends StatelessWidget {
   final _scrollController = new ScrollController();
 
   final String title;
@@ -292,7 +292,7 @@ class YataPage extends StatelessWidget {
 
   final floatingActionButton;
 
-  YataPage({
+  YataScreen({
     this.title,
     this.defaultText,
     this.elementsList,
