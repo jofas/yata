@@ -44,3 +44,6 @@
 /**/android/app/debug
 /**/android/app/profile
 /**/android/app/release
+
+# compile folder of api (rust)
+/**/target
