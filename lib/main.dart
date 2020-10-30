@@ -18,9 +18,11 @@ class YataApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: ChangeNotifierProvider<Elements>(
-        key: ValueKey("OH MY WTF"),
-        create: (context) => Elements(),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<Elements>(create: (_) => Elements()),
+          ChangeNotifierProvider<IndexChangeNotifier>(create: (_) => IndexChangeNotifier()),
+        ],
         child: Yata(),
       ),
     );
@@ -33,8 +35,6 @@ class Yata extends StatefulWidget {
 }
 
 class _YataState extends State<Yata> {
-  static const String _title = "yata";
-
   static const _nothingTodo = "Great! Nothing TODO!";
   static const _nothingDone = "Oh! You haven't done anything yet!";
   static const _nothingDeleted = "There is nothing here!";
@@ -44,9 +44,6 @@ class _YataState extends State<Yata> {
   List<MaterialPage> pages;
 
   FocusNode _focus_node;
-  int _index = 0; // TODO: this into Provider-Consumer Pattern as well
-                  // then I should be able to remove onTap from
-                  // YataPage as well (and make Yata stateless)
 
   _YataState() {
     _todoPage = MaterialPage(
@@ -63,7 +60,6 @@ class _YataState extends State<Yata> {
           action: (elements, int index) => elements.setTODODeleted(index),
           child: const Icon(Icons.clear),
         ),
-        onTap: onTap,
         floatingActionButton: Consumer<Elements>(
           builder: (context, elements, child) {
             return FloatingActionButton(
@@ -89,7 +85,6 @@ class _YataState extends State<Yata> {
           action: (elements, int index) => elements.unsetDone(index),
           child: const Icon(Icons.restore),
         ),
-        onTap: onTap,
       ),
     );
 
@@ -109,7 +104,6 @@ class _YataState extends State<Yata> {
           action: (elements, int index) => elements.unsetDeleted(index),
           child: const Icon(Icons.restore),
         ),
-        onTap: onTap,
         floatingActionButton: Consumer<Elements>(
           builder: (context, elements, child) {
             if (elements.getList(ElementsList.deleted).length == 0)
@@ -134,36 +128,32 @@ class _YataState extends State<Yata> {
   }
 
   @override
-  dispse() {
+  dispose() {
     _focus_node.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Navigator(
-      pages: pages.toList(),
-      onPopPage: (route, result) {
-        if (!route.didPop(result))
-          return false;
-        setState(() {
-          pages.removeLast();
-        });
-        return true;
-      },
-    );
-  }
-
-  onTap(int index) {
-    if (_index != index)
-      setState(() {
-        _index = index;
-        switch (_index) {
+    return Consumer<IndexChangeNotifier>(
+      builder: (context, indexChangeNotifier, child) {
+        switch (indexChangeNotifier.index) {
           case 0: pages.add(_todoPage); break;
           case 1: pages.add(_donePage); break;
           case 2: pages.add(_deletePage); break;
         }
-      });
+
+        return Navigator(
+          pages: pages.toList(),
+          onPopPage: (route, result) {
+            if (!route.didPop(result))
+              return false;
+            pages.removeLast();
+            return true;
+          },
+        );
+      },
+    );
   }
 
   showDialogBoxForAddingTODO(elements) async {
@@ -371,24 +361,29 @@ class YataPage extends StatelessWidget {
         ),
       ),
       floatingActionButton: floatingActionButton,
-        // this one needs access to elements as well
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: elementsList.index,
-        onTap: onTap,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.format_list_bulleted),
-            label: "TODOs",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check),
-            label: "Done",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.delete),
-            label: "Bin",
-          ),
-        ],
+      bottomNavigationBar: Consumer<IndexChangeNotifier>(
+        builder: (context, indexChangeNotifier, child) {
+          return BottomNavigationBar(
+            currentIndex: elementsList.index,
+            onTap: (int index) {
+              indexChangeNotifier.notifyIfChanged(index);
+            },
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.format_list_bulleted),
+                label: "TODOs",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.check),
+                label: "Done",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.delete),
+                label: "Bin",
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -455,6 +450,17 @@ class Elements with ChangeNotifier {
     dest.insert(0, src[index]);
     src.removeAt(index);
     notifyListeners();
+  }
+}
+
+class IndexChangeNotifier with ChangeNotifier {
+  int index = 0;
+
+  notifyIfChanged(int newIndex) {
+    if (index != newIndex) {
+      index = newIndex;
+      notifyListeners();
+    }
   }
 }
 
