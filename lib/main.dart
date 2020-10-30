@@ -48,74 +48,17 @@ class _YataState extends State<Yata> {
   _YataState() {
     _todoPage = MaterialPage(
       maintainState: false,
-      child: YataScreen(
-        title: "TODO:",
-        defaultText: _nothingTodo,
-        elementsList: ElementsList.todos,
-        mainButton: YataButtonTemplate(
-          action: (elements, int index) => elements.setDone(index),
-          child: const Icon(Icons.check),
-        ),
-        secondaryButton: YataButtonTemplate(
-          action: (elements, int index) => elements.setTODODeleted(index),
-          child: const Icon(Icons.clear),
-        ),
-        floatingActionButton: Consumer<Elements>(
-          builder: (context, elements, child) {
-            return FloatingActionButton(
-              child: const Icon(Icons.add),
-              onPressed: () => showDialogBoxForAddingTODO(elements),
-            );
-          },
-        ),
-      ),
+      child: YataTODOScreen(),
     );
 
     _donePage = MaterialPage(
       maintainState: false,
-      child: YataScreen(
-        title: "Done:",
-        defaultText: _nothingDone,
-        elementsList: ElementsList.done,
-        mainButton: YataButtonTemplate(
-          action: (elements, int index) => elements.setDoneDeleted(index),
-          child: const Icon(Icons.clear),
-        ),
-        secondaryButton: YataButtonTemplate(
-          action: (elements, int index) => elements.unsetDone(index),
-          child: const Icon(Icons.restore),
-        ),
-      ),
+      child: YataDoneScreen(),
     );
 
     _deletePage = MaterialPage(
       maintainState: false,
-      child: YataScreen(
-        title: "Deleted:",
-        defaultText: _nothingDeleted,
-        elementsList: ElementsList.deleted,
-        mainButton: YataButtonTemplate(
-          action: (elements, int index) {
-            showDialogBoxForDeletingItemCompletely(elements, index);
-          },
-          child: const Icon(Icons.delete),
-        ),
-        secondaryButton: YataButtonTemplate(
-          action: (elements, int index) => elements.unsetDeleted(index),
-          child: const Icon(Icons.restore),
-        ),
-        floatingActionButton: Consumer<Elements>(
-          builder: (context, elements, child) {
-            if (elements.getList(ElementsList.deleted).length == 0)
-              return Container();
-
-            return FloatingActionButton(
-              child: const Icon(Icons.delete),
-              onPressed: () => showDialogBoxForDeletingAllItemsCompletely(elements),
-            );
-          },
-        ),
-      ),
+      child: YataDeleteScreen(),
     );
 
     pages = [_todoPage];
@@ -155,20 +98,57 @@ class _YataState extends State<Yata> {
       },
     );
   }
+}
 
-  showDialogBoxForAddingTODO(elements) async {
+class YataTODOScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return YataScreen(
+      title: "TODOs:",
+      defaultText: "Great! Nothing TODO!",
+      elementsList: ElementsList.todos,
+      mainButton: YataButtonTemplate(
+        action: (elements, int index) => elements.setDone(index),
+        child: const Icon(Icons.check),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (elements, int index) => elements.setTODODeleted(index),
+        child: const Icon(Icons.clear),
+      ),
+      floatingActionButton: Consumer<Elements>(
+        builder: (context, elements, child) {
+          return FloatingActionButton(
+            child: const Icon(Icons.add),
+            onPressed: () => showDialogBoxForAddingTODO(context, elements),
+          );
+        },
+      ),
+    );
+  }
+
+  showDialogBoxForAddingTODO(context, elements) async {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         var textController = TextEditingController();
+        var focusNode = FocusNode();
+        var addTODO = () {
+          if (textController.text.length > 0) {
+            Navigator.pop(context);
+            elements.addTODO(textController.text);
+            textController.clear();
+          } else {
+            focusNode.requestFocus();
+          }
+        };
 
         return AlertDialog(
           content: AlertDialogContentContainer(
             child: TextField(
               autofocus: true,
-              focusNode: _focus_node,
+              focusNode: focusNode,
               controller: textController,
-              onSubmitted: (_) {addTODO(textController, elements);},
+              onSubmitted: (_) => addTODO(),
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: "Enter a TODO item",
@@ -184,7 +164,7 @@ class _YataState extends State<Yata> {
               child: const Text("CANCEL"),
             ),
             ElevatedButton(
-              onPressed: () {addTODO(textController, elements);},
+              onPressed: () => addTODO(),
               child: const Text("ADD TODO"),
             )
           ],
@@ -192,21 +172,81 @@ class _YataState extends State<Yata> {
       }
     );
   }
+}
 
-  showDialogBoxForDeletingItemCompletely(elements, int index) async {
+class YataDoneScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return YataScreen(
+      title: "Done:",
+      defaultText: "Oh! You haven't done anything yet!",
+      elementsList: ElementsList.done,
+      mainButton: YataButtonTemplate(
+        action: (elements, int index) => elements.setDoneDeleted(index),
+        child: const Icon(Icons.clear),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (elements, int index) => elements.unsetDone(index),
+        child: const Icon(Icons.restore),
+      ),
+    );
+  }
+}
+
+class YataDeleteScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return YataScreen(
+      title: "Deleted:",
+      defaultText: "There is nothing here!",
+      elementsList: ElementsList.deleted,
+      mainButton: YataButtonTemplate(
+        action: (elements, int index) {
+          showDialogBoxForDeleting(context, elements, index: index);
+        },
+        child: const Icon(Icons.delete),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (elements, int index) => elements.unsetDeleted(index),
+        child: const Icon(Icons.restore),
+      ),
+      floatingActionButton: Consumer<Elements>(
+        builder: (context, elements, child) {
+          if (elements.getList(ElementsList.deleted).length == 0)
+            return Container();
+
+          return FloatingActionButton(
+            child: const Icon(Icons.delete),
+            onPressed: () => showDialogBoxForDeleting(context, elements),
+          );
+        },
+      ),
+    );
+  }
+
+  showDialogBoxForDeleting(context, elements, {int index: null}) async {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
+        var focusNode = FocusNode();
+        var deleteCompletely = () {
+          Navigator.pop(context);
+          index == null ?
+            elements.deleteAllCompletely() : elements.deleteCompletely(index);
+        };
+
         return RawKeyboardListener(
-          focusNode: _focus_node,
+          focusNode: focusNode,
           autofocus: true,
           onKey: (RawKeyEvent event) {
             if (event.logicalKey == LogicalKeyboardKey.enter)
-              deleteCompletely(elements, index: index);
+              deleteCompletely();
           },
           child: AlertDialog(
             content: AlertDialogContentContainer(
-              child: Text("Are you sure you want to delete this item?"),
+              child: index == null ?
+                Text("Are you sure you want to delete all items in the bin?") :
+                Text("Are you sure you want to delete this item?"),
             ),
             actions: <Widget>[
               TextButton(
@@ -214,7 +254,7 @@ class _YataState extends State<Yata> {
                 child: const Text("CANCEL"),
               ),
               ElevatedButton(
-                onPressed: () => deleteCompletely(elements, index: index),
+                onPressed: () => deleteCompletely(),
                 child: const Text("DELETE"),
               )
             ],
@@ -224,57 +264,6 @@ class _YataState extends State<Yata> {
     );
   }
 
-  showDialogBoxForDeletingAllItemsCompletely(elements) async {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return RawKeyboardListener(
-          focusNode: _focus_node,
-          autofocus: true,
-          onKey: (RawKeyEvent event) {
-            if (event.logicalKey == LogicalKeyboardKey.enter)
-              deleteCompletely(elements);
-          },
-          child: AlertDialog(
-            content: AlertDialogContentContainer(
-              child: Text("Are you sure you want to delete all items in the bin?"),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text("CANCEL"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  deleteCompletely(elements);
-                },
-                child: const Text("DELETE"),
-              )
-            ],
-          ),
-        );
-      }
-    );
-  }
-
-  addTODO(textController, elements) {
-    if (textController.text.length > 0) {
-      Navigator.pop(context);
-      elements.addTODO(textController.text);
-      textController.clear();
-    } else {
-      _focus_node.requestFocus();
-    }
-  }
-
-  deleteCompletely(elements, {int index}) {
-    Navigator.pop(context);
-    index == null ?
-      elements.deleteAllCompletely() :
-      elements.deleteCompletely(index);
-  }
 }
 
 class YataScreen extends StatelessWidget {
