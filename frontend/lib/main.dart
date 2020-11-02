@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'dart:collection';
+import 'dart:io';
+
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(YataApp());
@@ -65,7 +69,14 @@ class YataTODOScreen extends StatelessWidget {
     var textController = TextEditingController();
     var focusNode = FocusNode();
 
-    var addTODO = () {
+    var addTODO = () async {
+      var response = await http.get(
+        "http://localhost:9999/",
+        headers: {
+        },
+      );
+      print("OMG response: $response");
+
       if (textController.text.length > 0) {
         controller.addTODO(textController.text);
         Get.back();
