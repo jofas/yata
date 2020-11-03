@@ -1,14 +1,34 @@
-use actix_web::{get, post, web, App, HttpRequest, HttpResponse,
-  HttpServer, Responder};
+use actix_web::{Result as ActixResult, get, post, web, App,
+  HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_cors::Cors;
+use serde_derive::Serialize;
+
+#[macro_use]
+extern crate lazy_static;
+
+use std::sync::Mutex;
+
+#[derive(Serialize, Clone)]
+struct YataData {
+  todos: Vec<String>,
+  done: Vec<String>,
+  deleted: Vec<String>
+}
+
+impl YataData {
+  fn new() -> YataData {
+    YataData{todos: Vec::new(), done: Vec::new(), deleted: Vec::new()}
+  }
+}
+
+// data as global variable
+lazy_static! {
+  static ref DATA: Mutex<YataData> = Mutex::new(YataData::new());
+}
 
 #[get("/")]
-async fn all(req: HttpRequest) -> impl Responder {
-  println!("Request: {:?}", req);
-  let response = HttpResponse::Ok()
-    .body("Hello!");
-  println!("{:?}", response.headers());
-  response
+async fn all(_req: HttpRequest) -> ActixResult<web::Json<YataData>> {
+  Ok(web::Json((*DATA.lock().unwrap()).clone()))
 }
 
 #[get("/todos")]
@@ -29,12 +49,18 @@ async fn deleted() -> impl Responder {
 // TODO:
 //
 // GET / gets the whole deal
-// GET /todos gets the list of todos
-// GET /done gets the list of done items
-// GET /deleted gets the list of deleted items
-// POST /todos {"value": "<...>"} adds a new todo to the list
+// POST /todos {value} add new item
+// POST /todo_set_done {id}
+// POST /todo_set_deleted {id}
+// POST /done_set_todo {id}
+// POST /done_set_deleted {id}
+// POST /deleted_set_todo {id}
+// POST /delete_completely {id}
+//
 //
 // connect the API to a database
+//
+// websocket API for live changes instead of HTTP API
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

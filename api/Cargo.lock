@@ -1804,4 +1804,7 @@ version = "0.1.0"
 dependencies = [
  "actix-cors",
  "actix-web",
+ "lazy_static",
+ "serde",
+ "serde_derive",
 ]

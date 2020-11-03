@@ -9,4 +9,6 @@ edition = "2018"
 [dependencies]
 actix-web = "*"
 actix-cors = "*"
-
+serde = "*"
+serde_derive = "*"
+lazy_static = "*"
