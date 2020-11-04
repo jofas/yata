@@ -1,7 +1,7 @@
 use actix_web::{Result as ActixResult, get, post, web, App,
   HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_cors::Cors;
-use serde_derive::Serialize;
+use serde_derive::{Serialize, Deserialize};
 
 #[macro_use]
 extern crate lazy_static;
@@ -17,8 +17,14 @@ struct YataData {
 
 impl YataData {
   fn new() -> YataData {
-    YataData{todos: Vec::new(), done: Vec::new(), deleted: Vec::new()}
+    YataData{todos: vec!["test".to_string()], done: vec!["mest".to_string()],
+      deleted: vec!["rest".to_string()]}
   }
+}
+
+#[derive(Deserialize)]
+struct AddTodo {
+  value: String
 }
 
 // data as global variable
@@ -28,12 +34,14 @@ lazy_static! {
 
 #[get("/")]
 async fn all(_req: HttpRequest) -> ActixResult<web::Json<YataData>> {
+  // TODO: to json syntax of HttpResponse
   Ok(web::Json((*DATA.lock().unwrap()).clone()))
 }
 
-#[get("/todos")]
-async fn todos() -> impl Responder {
-  HttpResponse::Ok().body("Hello!")
+#[post("/todos")]
+async fn todos(todo: web::Json<AddTodo>) -> impl Responder {
+  DATA.lock().unwrap().todos.insert(0, todo.value.clone());
+  HttpResponse::Ok().finish()
 }
 
 #[get("/done")]

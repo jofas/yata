@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'dart:collection';
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -36,13 +37,7 @@ class YataApp extends StatelessWidget {
 class YataTODOScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataTODOScreen() {
-    try {
-      controller = Get.find();
-    } catch (_) {
-      controller = Get.put(ElementsController());
-    }
-  }
+  YataTODOScreen() :  controller = getElementsController();
 
   @override
   Widget build(BuildContext context) {
@@ -59,8 +54,8 @@ class YataTODOScreen extends StatelessWidget {
         child: const Icon(Icons.clear),
       ),
       floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
         onPressed: () => Get.dialog(dialogForAddingTODO()),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -69,14 +64,7 @@ class YataTODOScreen extends StatelessWidget {
     var textController = TextEditingController();
     var focusNode = FocusNode();
 
-    var addTODO = () async {
-      var response = await http.get(
-        "http://localhost:9999/",
-        headers: {
-        },
-      );
-      print("OMG response: $response");
-
+    var addTODO = () {
       if (textController.text.length > 0) {
         controller.addTODO(textController.text);
         Get.back();
@@ -115,13 +103,7 @@ class YataTODOScreen extends StatelessWidget {
 class YataDoneScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataDoneScreen() {
-    try {
-      controller = Get.find();
-    } catch (_) {
-      controller = Get.put(ElementsController());
-    }
-  }
+  YataDoneScreen() : controller = getElementsController();
 
   @override
   Widget build(BuildContext context) {
@@ -144,13 +126,7 @@ class YataDoneScreen extends StatelessWidget {
 class YataDeleteScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataDeleteScreen() {
-    try {
-      controller = Get.find();
-    } catch (_) {
-      controller = Get.put(ElementsController());
-    }
-  }
+  YataDeleteScreen() : controller = getElementsController();
 
   @override
   Widget build(BuildContext context) {
@@ -333,6 +309,42 @@ class AlertDialogContentContainer extends StatelessWidget {
   }
 }
 
+ElementsController getElementsController() {
+  ElementsController controller;
+
+  try {
+    controller = Get.find();
+  } catch (_) {
+    controller = Get.put(ElementsController());
+    // TODO: loading screen while this is processing
+    //       (put this into build or something (wrap with Obx maybe))
+    //
+    //        ListBuilder elements from Row to Card
+
+    var client = http.Client();
+
+    client.post(
+      "http://localhost:9999/todos",
+      headers: {"content-type": "application/json"},
+      body: jsonEncode({"value": "testy"})
+    ).then((response) {
+      print("Got Response: ${response.statusCode}");
+      print("Got Response: ${response.body}");
+    });
+
+    client.get("http://localhost:9999/").then((response) {
+      controller.setElementsFromJsonString(response.body);
+      print("Gotten Elements from server");
+      print("Gotten Elements from server: ${response.body}");
+
+      client.close();
+    });
+
+  }
+
+  return controller;
+}
+
 class ElementsController extends GetxController {
   final elements = Elements().obs;
 
@@ -345,6 +357,19 @@ class ElementsController extends GetxController {
       case 2: Get.toNamed("/bin"); break;
     }
   }
+
+  setElementsFromJsonString(String jsonString) {
+    var jsonElements = jsonDecode(jsonString);
+
+    elements.value.todos = List<String>.from(jsonElements["todos"]);
+    elements.value.done = List<String>.from(jsonElements["done"]);
+    elements.value.deleted = List<String>.from(jsonElements["deleted"]);
+
+    elements.refresh();
+  }
+
+  // TODO: evertime I call refresh I also need to send the server
+  //       an updated state
 
   addTODO(String value) {
     elements.value.addTODO(value);
@@ -390,34 +415,34 @@ class ElementsController extends GetxController {
 enum ElementsList { todos, done, deleted }
 
 class Elements {
-  List<String> _todos = [];
-  List<String> _done = [];
-  List<String> _deleted = [];
+  List<String> todos = [];
+  List<String> done = [];
+  List<String> deleted = [];
 
   getList(ElementsList list) {
     switch (list) {
-      case ElementsList.todos: return UnmodifiableListView(_todos);
-      case ElementsList.done: return UnmodifiableListView(_done);
-      case ElementsList.deleted: return UnmodifiableListView(_deleted);
+      case ElementsList.todos: return UnmodifiableListView(todos);
+      case ElementsList.done: return UnmodifiableListView(done);
+      case ElementsList.deleted: return UnmodifiableListView(deleted);
     }
   }
 
   addTODO(String value) {
-    _todos.insert(0, value);
+    todos.insert(0, value);
   }
 
-  setDone(int index) => _move(_todos, _done, index);
-  unsetDone(int index) => _move(_done, _todos, index);
-  setTODODeleted(int index) => _move(_todos, _deleted, index);
-  setDoneDeleted(int index) => _move(_done, _deleted, index);
-  unsetDeleted(int index) => _move(_deleted, _todos, index);
+  setDone(int index) => _move(todos, done, index);
+  unsetDone(int index) => _move(done, todos, index);
+  setTODODeleted(int index) => _move(todos, deleted, index);
+  setDoneDeleted(int index) => _move(done, deleted, index);
+  unsetDeleted(int index) => _move(deleted, todos, index);
 
   deleteCompletely(int index) {
-    _deleted.removeAt(index);
+    deleted.removeAt(index);
   }
 
   deleteAllCompletely() {
-    _deleted = [];
+    deleted = [];
   }
 
   _move(src, dest, int index) {
