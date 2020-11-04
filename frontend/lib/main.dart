@@ -37,7 +37,7 @@ class YataApp extends StatelessWidget {
 class YataTODOScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataTODOScreen() :  controller = getElementsController();
+  YataTODOScreen() :  controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +103,7 @@ class YataTODOScreen extends StatelessWidget {
 class YataDoneScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataDoneScreen() : controller = getElementsController();
+  YataDoneScreen() : controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +126,7 @@ class YataDoneScreen extends StatelessWidget {
 class YataDeleteScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataDeleteScreen() : controller = getElementsController();
+  YataDeleteScreen() : controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -309,44 +309,82 @@ class AlertDialogContentContainer extends StatelessWidget {
   }
 }
 
-ElementsController getElementsController() {
-  ElementsController controller;
+class ElementsController extends GetxController {
+  final elements = Elements().obs;
+  final client = http.Client();
 
-  try {
-    controller = Get.find();
-  } catch (_) {
-    controller = Get.put(ElementsController());
+  ElementsController() {
     // TODO: loading screen while this is processing
     //       (put this into build or something (wrap with Obx maybe))
     //
     //        ListBuilder elements from Row to Card
 
-    var client = http.Client();
-
-    client.post(
-      "http://localhost:9999/todos",
-      headers: {"content-type": "application/json"},
-      body: jsonEncode({"value": "testy"})
-    ).then((response) {
-      print("Got Response: ${response.statusCode}");
-      print("Got Response: ${response.body}");
-    });
-
     client.get("http://localhost:9999/").then((response) {
-      controller.setElementsFromJsonString(response.body);
+      // TODO: error management
+      setElementsFromJsonString(response.body);
       print("Gotten Elements from server");
       print("Gotten Elements from server: ${response.body}");
-
-      client.close();
     });
-
   }
 
-  return controller;
-}
+  factory ElementsController.findOrCreate() {
+    ElementsController controller;
 
-class ElementsController extends GetxController {
-  final elements = Elements().obs;
+    try {
+      controller = Get.find();
+    } catch (_) {
+      controller = Get.put(ElementsController());
+    }
+    return controller;
+  }
+
+  addTODO(String value) {
+    elements.value.addTODO(value);
+    _post(path: "add_todo", body: jsonEncode({"value": value}));
+    elements.refresh();
+  }
+
+  setDone(int index) {
+    elements.value.setDone(index);
+    _post(path: "set_done/$index");
+    elements.refresh();
+  }
+
+  unsetDone(int index) {
+    elements.value.unsetDone(index);
+    _post(path: "unset_done/$index");
+    elements.refresh();
+  }
+
+  unsetDeleted(int index) {
+    elements.value.unsetDeleted(index);
+    _post(path: "unset_deleted/$index");
+    elements.refresh();
+  }
+
+  setTODODeleted(int index) {
+    elements.value.setTODODeleted(index);
+    _post(path: "set_todo_deleted/$index");
+    elements.refresh();
+  }
+
+  setDoneDeleted(int index) {
+    elements.value.setDoneDeleted(index);
+    _post(path: "set_done_deleted/$index");
+    elements.refresh();
+  }
+
+  deleteCompletely(int index) {
+    elements.value.deleteCompletely(index);
+    _post(path: "delete_completely/$index");
+    elements.refresh();
+  }
+
+  deleteAllCompletely() {
+    elements.value.deleteAllCompletely();
+    _post(path: "delete_completely");
+    elements.refresh();
+  }
 
   getList(ElementsList list) => elements.value.getList(list);
 
@@ -368,47 +406,15 @@ class ElementsController extends GetxController {
     elements.refresh();
   }
 
-  // TODO: evertime I call refresh I also need to send the server
-  //       an updated state
-
-  addTODO(String value) {
-    elements.value.addTODO(value);
-    elements.refresh();
-  }
-
-  setDone(int index) {
-    elements.value.setDone(index);
-    elements.refresh();
-  }
-
-  unsetDone(int index) {
-    elements.value.unsetDone(index);
-    elements.refresh();
-  }
-
-  setTODODeleted(int index) {
-    elements.value.setTODODeleted(index);
-    elements.refresh();
-  }
-
-  setDoneDeleted(int index) {
-    elements.value.setDoneDeleted(index);
-    elements.refresh();
-  }
-
-  unsetDeleted(int index) {
-    elements.value.unsetDeleted(index);
-    elements.refresh();
-  }
-
-  deleteCompletely(int index) {
-    elements.value.deleteCompletely(index);
-    elements.refresh();
-  }
-
-  deleteAllCompletely() {
-    elements.value.deleteAllCompletely();
-    elements.refresh();
+  _post({String path, String body: null}) {
+    client.post(
+      "http://localhost:9999/$path",
+      headers: {"content-type": "application/json"},
+      body: body,
+    ).then((response) {
+      // TODO: error management
+      print("Got Response: ${response.statusCode}");
+    });
   }
 }
 
@@ -433,9 +439,9 @@ class Elements {
 
   setDone(int index) => _move(todos, done, index);
   unsetDone(int index) => _move(done, todos, index);
+  unsetDeleted(int index) => _move(deleted, todos, index);
   setTODODeleted(int index) => _move(todos, deleted, index);
   setDoneDeleted(int index) => _move(done, deleted, index);
-  unsetDeleted(int index) => _move(deleted, todos, index);
 
   deleteCompletely(int index) {
     deleted.removeAt(index);
