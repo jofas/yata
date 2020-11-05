@@ -1,7 +1,16 @@
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse,
   HttpServer, Responder};
+
 use actix_cors::Cors;
+
 use serde_derive::{Serialize, Deserialize};
+
+use mongodb::{Client, Collection};
+use mongodb::options::ClientOptions;
+use mongodb::error::Result as MDBResult;
+use mongodb::bson::doc;
+
+use futures::stream::StreamExt;
 
 #[macro_use]
 extern crate lazy_static;
@@ -68,13 +77,36 @@ struct AddTodo {
 //
 // somehow get global db handle (via App.data)
 //
+// change api data model:
+//
+// Entry {
+//  value: String,
+//  list: Enum<Todo, Done, Deleted>,
+//  index: usize,
+// }
+//
+//
+//
+// in event api: query for the exact entry with index and list
+//               sucks too, since I need to change indices
+//
 //
 lazy_static! {
   static ref DATA: Mutex<Elements> = Mutex::new(Elements::new());
 }
 
 #[get("/")]
-async fn get_elements() -> impl Responder {
+async fn get_elements(db: web::Data<Collection>) -> impl Responder {
+  /*
+  let filter = doc!{};
+  let mut cursor = db.find(filter, None).await.unwrap();
+
+  while let Some(result) = cursor.next().await {
+    let document = result.unwrap();
+
+    println!("{:?}", result.unwrap());
+  }
+  */
   HttpResponse::Ok().json((*DATA.lock().unwrap()).clone())
 }
 
@@ -134,13 +166,6 @@ async fn delete_all_completely() -> impl Responder {
   HttpResponse::Ok().finish()
 }
 
-use mongodb::{Client, Collection};
-use mongodb::options::ClientOptions;
-use mongodb::error::Result as MDBResult;
-use mongodb::bson::doc;
-
-use futures::stream::StreamExt;
-
 async fn init_database() -> MDBResult<Collection> {
   let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
   let client = Client::with_options(client_options)?;
@@ -154,22 +179,35 @@ async fn main() -> std::io::Result<()> {
 
   let collection = init_database().await.unwrap();
 
-  let docs = vec![
-    doc! { "title": "1984", "author": "George Orwell" },
-    doc! { "title": "Animal Farm", "author": "George Orwell" },
-    doc! { "title": "The Great Gatsby", "author": "F. Scott Fitzgerald" },
-  ];
+  // save the todos as {"value": "...", "state": "{todo|done|deleted}"}
+  // and have a collection for each user
 
-  collection.insert_many(docs, None).await.unwrap();
+  let elems = doc! {
+    "user": "test",
+    "todos": [{"value": "todo1", "index": 0}, {"value": "todo2", "index": 1}],
+    "done": [],
+    "deleted": [],
+  };
 
-  let filter = doc!{};
-  let mut cursor = collection.find(filter, None).await.unwrap();
+  let find = doc!{"user": "test"};
 
-  while let Some(result) = cursor.next().await {
-    println!("{:?}", result.unwrap());
+  let rem_from_todo = doc!{"$pull": {"todos": {"index": 0}}};
+  // find_one_and_delete, find_one_and_update
+
+  if let None = collection.find_one_and_replace(find.clone(), elems.clone(), None).await.unwrap() {
+    println!("Adding Elems for first time");
+    collection.insert_one(elems.clone(), None).await.unwrap();
+  } else {
+    println!("Modified existing Elems");
   }
 
-  println!("INSERTED DATA");
+  let res = collection.find_one_and_update(find.clone(), rem_from_todo, None).await.unwrap();
+  println!("{:?}", res);
+  //let res = collection.find_one_and_update(find, rem_from_todo, None).await.unwrap();
+  //println!("{:?}", res);
+  //collection.find_one_and_update(find, , None).await.unwrap();
+
+  panic!();
 
   HttpServer::new(move || {
     App::new()
