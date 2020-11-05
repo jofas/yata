@@ -130,6 +130,7 @@ async fn delete_all_completely() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+  println!("STARTING YATA_API SERVER");
   HttpServer::new(|| {
     App::new()
       .wrap(Cors::permissive())
@@ -143,7 +144,7 @@ async fn main() -> std::io::Result<()> {
       .service(delete_completely)
       .service(delete_all_completely)
   })
-  .bind("127.0.0.1:9999")?
+  .bind("0.0.0.0:9999")?
   .run()
   .await
 }
