@@ -6,7 +6,7 @@ use serde_derive::{Serialize, Deserialize};
 #[macro_use]
 extern crate lazy_static;
 
-use std::sync::Mutex;
+use std::sync::{Mutex};
 
 #[derive(Serialize, Clone)]
 struct Elements {
@@ -65,6 +65,10 @@ struct AddTodo {
 // data as global variable
 //
 // TODO: into database
+//
+// somehow get global db handle (via App.data)
+//
+//
 lazy_static! {
   static ref DATA: Mutex<Elements> = Mutex::new(Elements::new());
 }
@@ -130,11 +134,46 @@ async fn delete_all_completely() -> impl Responder {
   HttpResponse::Ok().finish()
 }
 
+use mongodb::{Client, Collection};
+use mongodb::options::ClientOptions;
+use mongodb::error::Result as MDBResult;
+use mongodb::bson::doc;
+
+use futures::stream::StreamExt;
+
+async fn init_database() -> MDBResult<Collection> {
+  let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
+  let client = Client::with_options(client_options)?;
+  let db = client.database("yata_db");
+  Ok(db.collection("yata_collection"))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   println!("STARTING YATA_API SERVER");
-  HttpServer::new(|| {
+
+  let collection = init_database().await.unwrap();
+
+  let docs = vec![
+    doc! { "title": "1984", "author": "George Orwell" },
+    doc! { "title": "Animal Farm", "author": "George Orwell" },
+    doc! { "title": "The Great Gatsby", "author": "F. Scott Fitzgerald" },
+  ];
+
+  collection.insert_many(docs, None).await.unwrap();
+
+  let filter = doc!{};
+  let mut cursor = collection.find(filter, None).await.unwrap();
+
+  while let Some(result) = cursor.next().await {
+    println!("{:?}", result.unwrap());
+  }
+
+  println!("INSERTED DATA");
+
+  HttpServer::new(move || {
     App::new()
+      .data(collection.clone())
       .wrap(Cors::permissive())
       .service(get_elements)
       .service(add_todo)
