@@ -63,6 +63,8 @@ struct AddTodo {
 }
 
 // data as global variable
+//
+// TODO: into database
 lazy_static! {
   static ref DATA: Mutex<Elements> = Mutex::new(Elements::new());
 }
