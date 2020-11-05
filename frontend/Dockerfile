@@ -8,7 +8,6 @@ RUN flutter doctor
 RUN flutter channel beta
 RUN flutter upgrade
 RUN flutter config --enable-web
-WORKDIR ./
 COPY . .
 RUN flutter build web
 
