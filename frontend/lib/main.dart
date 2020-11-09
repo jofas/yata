@@ -25,11 +25,100 @@ class YataApp extends StatelessWidget {
       ),
       initialRoute: "/",
       getPages: [
-        GetPage(name: "/", page: () => YataTODOScreen()),
-        GetPage(name: "/todo", page: () => YataTODOScreen()),
-        GetPage(name: "/done", page: () => YataDoneScreen()),
-        GetPage(name: "/bin", page: () => YataDeleteScreen()),
+        GetPage(name: "/", page: () => LoginOrAppScreen(child: YataTODOScreen())),
+        GetPage(name: "/todo", page: () => LoginOrAppScreen(child: YataTODOScreen())),
+        GetPage(name: "/done", page: () => LoginOrAppScreen(child: YataDoneScreen())),
+        GetPage(name: "/bin", page: () => LoginOrAppScreen(child: YataDeleteScreen())),
       ],
+    );
+  }
+}
+
+class LoginOrAppScreen extends StatelessWidget {
+  AuthController controller;
+
+  Widget child;
+
+  LoginOrAppScreen({this.child}) : controller = AuthController.findOrCreate();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (!controller.isAuthenticated)
+        return LoginScreen();
+
+      // TODO: here I can make call to API
+      return child;
+    });
+  }
+}
+
+class LoginScreen extends StatelessWidget {
+  final AuthController controller = Get.find();
+
+  final _formKey = GlobalKey<FormState>();
+
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // TODO: proper login screen with username/password input,
+      //       which is passed to the authController calling the
+      //       REST API of keycloak
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.all(10.0),
+              child: TextFormField(
+                controller: usernameController,
+                validator: (value) {
+                  if (value.isEmpty)
+                    return "Can't be empty";
+                  return null;
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: "Username or E-Mail Address",
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(10.0),
+              child: TextFormField(
+                controller: passwordController,
+                validator: (value) {
+                  if (value.isEmpty)
+                    return "Can't be empty";
+                  return null;
+                },
+                obscureText: true,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: "Password",
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (_formKey.currentState.validate()) {
+                  await controller.login(
+                    usernameController.text,
+                    passwordController.text,
+                  );
+                  // TODO: authController should
+                  // have observable enum whether
+                  // request was successful or not
+                }
+              },
+              child: Text("Login"),
+            )
+          ],
+        ),
+      ),
     );
   }
 }
@@ -37,7 +126,7 @@ class YataApp extends StatelessWidget {
 class YataTODOScreen extends StatelessWidget {
   ElementsController controller;
 
-  YataTODOScreen() :  controller = ElementsController.findOrCreate();
+  YataTODOScreen() : controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +177,7 @@ class YataTODOScreen extends StatelessWidget {
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: () => Get.back(),
+          onPressed: () => Get.back(), // TODO: dispose focusNode and textcontroller
           child: const Text("CANCEL"),
         ),
         ElevatedButton(
@@ -154,6 +243,7 @@ class YataDeleteScreen extends StatelessWidget {
   dialogForDeleting({int index: null}) {
     var focusNode = FocusNode();
 
+    // TODO: into controller
     var deleteCompletely = () {
       index == null ?
         controller.deleteAllCompletely() : controller.deleteCompletely(index);
@@ -309,6 +399,72 @@ class AlertDialogContentContainer extends StatelessWidget {
   }
 }
 
+class AuthController extends GetxController {
+  final _isAuthenticated = false.obs;
+
+  AuthController();
+
+  factory AuthController.findOrCreate() {
+    AuthController controller;
+
+    try {
+      controller = Get.find();
+    } catch (_) {
+      controller = Get.put(AuthController());
+      // TODO: look for auth response in local storage
+      //       if there, refresh
+      //       if refresh successful -> logged in
+    }
+    return controller;
+  }
+
+  get isAuthenticated => _isAuthenticated.value;
+
+  login(String username, String password) async {
+    print("$username $password");
+
+    // TODO: catch connection errors
+    //       clean username from trailing whitespaces
+    var response = await http.post(
+      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/token",
+      body: {
+        "username": username,
+        "password": password,
+        "client_id": "yata_frontend",
+        "grant_type": "password",
+      }
+    );
+
+    if (response.statusCode == 200) {
+      // TODO: set authentication to be true
+      //
+      //       start timer resetting authentication to be false
+      //       after auth expires
+      //
+      //       in same timer callback: try refreshing, if fails ->
+      //       revoke auth
+      //
+      //       save response to local storage
+      print("success");
+      var accessToken = jsonDecode(response.body)["access_token"];
+      var t = accessToken.split(".");
+
+      print(utf8.decode(base64.decode(base64Url.normalize(t[1]))));
+      print((DateTime.now().millisecondsSinceEpoch / 1000).toInt());
+    } else {
+      // TODO: update login screen and tell it that username or
+      //       password are incorrect
+      print("failed");
+    }
+
+    print(response.body);
+
+    // TODO: pass credentials to server and so on
+    //_isAuthenticated.value = true;
+    //_isAuthenticated.refresh();
+  }
+}
+
 class ElementsController extends GetxController {
   final elements = Elements().obs;
   final client = http.Client();
@@ -318,6 +474,8 @@ class ElementsController extends GetxController {
     //       (put this into build or something (wrap with Obx maybe))
     //
     //        ListBuilder elements from Row to Card
+
+    // TODO: this into method and call method in build of YataPage
 
     client.get("http://localhost:9999/").then((response) {
       // TODO: error management
@@ -388,6 +546,7 @@ class ElementsController extends GetxController {
 
   getList(ElementsList list) => elements.value.getList(list);
 
+  // TODO: not in controller
   routeByIndex(int index) {
     switch (index) {
       case 0: Get.toNamed("/todo"); break;
