@@ -403,6 +403,9 @@ class AlertDialogContentContainer extends StatelessWidget {
 class AuthController extends GetxController {
   final _isAuthenticated = false.obs;
 
+  JsonWebToken _accessToken, _refreshToken;
+  Map<String, dynamic> _tokenResponse;
+
   AuthController();
 
   factory AuthController.findOrCreate() {
@@ -413,8 +416,11 @@ class AuthController extends GetxController {
     } catch (_) {
       controller = Get.put(AuthController());
       // TODO: look for auth response in local storage
-      //       if there, refresh
+      //       if there and refresh_token is still valid, refresh
       //       if refresh successful -> logged in
+      //
+      //       save response to local storage
+
     }
     return controller;
   }
@@ -436,13 +442,7 @@ class AuthController extends GetxController {
       }
     );
 
-    /*
-    var keycloakConfig = await http.get(
-      "http://localhost:8080/auth/realms/yata/.well-known/openid-configuration",
-    );
-    print(keycloakConfig.body);
-    */
-
+    // TODO: into constructor and keyStore as class attribute
     var getKeycloakCertsResponse = await http.get(
       "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs",
     );
@@ -454,38 +454,47 @@ class AuthController extends GetxController {
     }
 
     if (response.statusCode == 200) {
-      // TODO: set authentication to be true
-      //
-      //       start timer resetting authentication to be false
-      //       after auth expires
-      //
-      //       in same timer callback: try refreshing, if fails ->
-      //       revoke auth
-      //
-      //       save response to local storage
+      var responseBody = json.decode(response.body);
 
-      var accessToken = jsonDecode(response.body)["access_token"];
+      var access = JsonWebToken.unverified(responseBody["access_token"]);
+      var accessVerified = await access.verify(keyStore);
 
-      var jwt = JsonWebToken.unverified(accessToken);
-      var verified = await jwt.verify(keyStore);
-      print(verified);
+      var refresh = JsonWebToken.unverified(responseBody["refresh_token"]);
+      var refreshVerified = await refresh.verify(keyStore);
 
-      //print(header);
-      //print(certs[header["kid"]]);
-      //print(payload);
-      //print(payload["exp"]);
+      if (accessVerified && refreshVerified) {
+        _tokenResponse = responseBody;
+        _accessToken = access;
+        _refreshToken = refresh;
+
+        _cyclicallyRefreshToken();
+
+        _isAuthenticated.value = true;
+        _isAuthenticated.refresh();
+      } else {
+        // shouldn't happen
+        print("token unverified");
+      }
       //print((DateTime.now().millisecondsSinceEpoch / 1000).toInt());
     } else {
       // TODO: update login screen and tell it that username or
       //       password are incorrect
       print("failed");
     }
+  }
 
-    //print(response.body);
+  _cyclicallyRefreshToken() async {
+    var seconds = (
+      (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
+    ).toInt();
 
-    // TODO: pass credentials to server and so on
-    //_isAuthenticated.value = true;
-    //_isAuthenticated.refresh();
+    Future.delayed(Duration(seconds: seconds), () {
+      // TODO: refresh_token
+      //
+      //       if refresh unsuccessful -> set token to be invalid
+      print("About to expire");
+      _cyclicallyRefreshToken();
+    });
   }
 }
 
