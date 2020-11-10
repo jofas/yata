@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:jose/jose.dart';
 
 void main() {
   runApp(YataApp());
@@ -435,6 +436,23 @@ class AuthController extends GetxController {
       }
     );
 
+    /*
+    var keycloakConfig = await http.get(
+      "http://localhost:8080/auth/realms/yata/.well-known/openid-configuration",
+    );
+    print(keycloakConfig.body);
+    */
+
+    var getKeycloakCertsResponse = await http.get(
+      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs",
+    );
+    var keycloakCerts = json.decode(getKeycloakCertsResponse.body);
+
+    var keyStore = JsonWebKeyStore();
+    for (var key in keycloakCerts["keys"]) {
+      keyStore.addKey(JsonWebKey.fromJson(key));
+    }
+
     if (response.statusCode == 200) {
       // TODO: set authentication to be true
       //
@@ -445,19 +463,25 @@ class AuthController extends GetxController {
       //       revoke auth
       //
       //       save response to local storage
-      print("success");
-      var accessToken = jsonDecode(response.body)["access_token"];
-      var t = accessToken.split(".");
 
-      print(utf8.decode(base64.decode(base64Url.normalize(t[1]))));
-      print((DateTime.now().millisecondsSinceEpoch / 1000).toInt());
+      var accessToken = jsonDecode(response.body)["access_token"];
+
+      var jwt = JsonWebToken.unverified(accessToken);
+      var verified = await jwt.verify(keyStore);
+      print(verified);
+
+      //print(header);
+      //print(certs[header["kid"]]);
+      //print(payload);
+      //print(payload["exp"]);
+      //print((DateTime.now().millisecondsSinceEpoch / 1000).toInt());
     } else {
       // TODO: update login screen and tell it that username or
       //       password are incorrect
       print("failed");
     }
 
-    print(response.body);
+    //print(response.body);
 
     // TODO: pass credentials to server and so on
     //_isAuthenticated.value = true;
