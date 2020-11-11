@@ -30,6 +30,8 @@ dependencies:
 
   jose:
 
+  localstorage:
+
   cupertino_icons: ^1.0.0
 
 dev_dependencies:

@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
+import 'package:localstorage/localstorage.dart';
 
 void main() {
   runApp(YataApp());
@@ -408,17 +409,28 @@ debugPrintJWT(String token) {
 }
 
 class AuthController extends GetxController {
+  static const KEYCLOAK_BASE =
+    "http://localhost:8080/auth/realms/yata/protocol/openid-connect";
+
   final _isAuthenticated = false.obs;
   final _keyStore = JsonWebKeyStore();
+  final _client = http.Client();
+  final _localStorage = LocalStorage("auth.json");
 
   JsonWebToken _accessToken, _refreshToken;
 
   AuthController() {
-    http.get(
-      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs"
-    ).then((response) {
+    _client.get("$KEYCLOAK_BASE/certs").then((response) {
       _keyStore.addKeySet(JsonWebKeySet.fromJson(json.decode(response.body)));
     });
+
+    _accessToken = _localStorage.getItem("access_token");
+    _refreshToken = _localStorage.getItem("refresh_token");
+
+    if (_refreshToken != null) {
+      print("HELLOOOOO");
+      _cyclicallyRefreshToken().then(() {print("refreshed token!");});
+    }
   }
 
   factory AuthController.findOrCreate() {
@@ -445,13 +457,16 @@ class AuthController extends GetxController {
     _isAuthenticated.refresh();
   }
 
+  int get accessTokenExpiresIn => (
+    (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
+  ).toInt();
+
   login(String username, String password) async {
     print("$username $password");
 
     // TODO: catch connection errors
     //       clean username from trailing whitespaces
-    var response = await http.post(
-      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/token",
+    var response = await _client.post("$KEYCLOAK_BASE/token",
       body: {
         "username": username,
         "password": password,
@@ -460,40 +475,33 @@ class AuthController extends GetxController {
       }
     );
 
-    var success = await _setTokenFromResponse(response);
-
-    if (success) {
-      _cyclicallyRefreshToken();
-      isAuthenticated = true;
-    }
+    _setAuthenticationAndCyclicallyRefreshToken(response);
   }
 
   _cyclicallyRefreshToken() async {
-    var seconds = (
-      (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
-    ).toInt();
-
-    Future.delayed(Duration(seconds: seconds), () async {
-      var response = await http.post(
-        "http://localhost:8080/auth/realms/yata/protocol/openid-connect/token",
-        body: {
-          "refresh_token": _refreshToken.toCompactSerialization(),
-          "client_id": "yata_frontend",
-          "grant_type": "refresh_token",
-        }
-      );
-
-      isAuthenticated = await _setTokenFromResponse(response);
-
-      if (isAuthenticated)
-      {
-        print("successfully refreshed token");
-        _cyclicallyRefreshToken();
+    var response = await _client.post("$KEYCLOAK_BASE/token",
+      body: {
+        "refresh_token": _refreshToken.toCompactSerialization(),
+        "client_id": "yata_frontend",
+        "grant_type": "refresh_token",
       }
-    });
+    );
+
+    _setAuthenticationAndCyclicallyRefreshToken(response);
   }
 
-  Future<bool> _setTokenFromResponse(response) async {
+  _setAuthenticationAndCyclicallyRefreshToken(http.Response response) async {
+    isAuthenticated = await _setTokenFromResponse(response);
+
+    if (isAuthenticated)
+      Future.delayed(
+        Duration(seconds: accessTokenExpiresIn),
+        _cyclicallyRefreshToken,
+      );
+  }
+
+  // TODO bool -> Error
+  Future<bool> _setTokenFromResponse(http.Response response) async {
     if (response.statusCode == 200) {
       var responseBody = json.decode(response.body);
 
@@ -503,6 +511,14 @@ class AuthController extends GetxController {
       if (accessVerified) {
         _accessToken = access;
         _refreshToken = JsonWebToken.unverified(responseBody["refresh_token"]);
+
+        // TODO: change to other local storage implementation
+        //       and only save the refresh token
+        _localStorage.setItem(
+          "access_token", _accessToken.toCompactSerialization());
+        _localStorage.setItem(
+          "refresh_token", _refreshToken.toCompactSerialization());
+
         return true;
       }
 
