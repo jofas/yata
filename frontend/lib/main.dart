@@ -404,7 +404,6 @@ class AuthController extends GetxController {
   final _isAuthenticated = false.obs;
 
   JsonWebToken _accessToken, _refreshToken;
-  Map<String, dynamic> _tokenResponse;
 
   AuthController();
 
@@ -462,8 +461,10 @@ class AuthController extends GetxController {
       var refresh = JsonWebToken.unverified(responseBody["refresh_token"]);
       var refreshVerified = await refresh.verify(keyStore);
 
-      if (accessVerified && refreshVerified) {
-        _tokenResponse = responseBody;
+      // TODO check header of refresh token
+
+      //if (accessVerified && refreshVerified) {
+      if (accessVerified) {
         _accessToken = access;
         _refreshToken = refresh;
 
@@ -473,7 +474,7 @@ class AuthController extends GetxController {
         _isAuthenticated.refresh();
       } else {
         // shouldn't happen
-        print("token unverified");
+        print("token unverified: $accessVerified, $refreshVerified");
       }
       //print((DateTime.now().millisecondsSinceEpoch / 1000).toInt());
     } else {
@@ -488,7 +489,18 @@ class AuthController extends GetxController {
       (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
     ).toInt();
 
-    Future.delayed(Duration(seconds: seconds), () {
+    Future.delayed(Duration(seconds: seconds), () async {
+      var response = await http.post(
+        "http://localhost:8080/auth/realms/yata/protocol/openid-connect/token",
+        body: {
+          "refresh_token": _refreshToken.toCompactSerialization(),
+          "client_id": "yata_frontend",
+          "grant_type": "refresh_token",
+        }
+      );
+
+      print("refresh response");
+      print(response.body);
       // TODO: refresh_token
       //
       //       if refresh unsuccessful -> set token to be invalid
