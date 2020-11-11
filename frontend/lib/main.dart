@@ -402,10 +402,19 @@ class AlertDialogContentContainer extends StatelessWidget {
 
 class AuthController extends GetxController {
   final _isAuthenticated = false.obs;
+  final _keyStore = JsonWebKeyStore();
 
   JsonWebToken _accessToken, _refreshToken;
 
-  AuthController();
+  AuthController() {
+    http.get(
+      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs",
+    ).then((response) {
+      for (var key in json.decode(response.body)["keys"]) {
+        _keyStore.addKey(JsonWebKey.fromJson(key));
+      }
+    });
+  }
 
   factory AuthController.findOrCreate() {
     AuthController controller;
@@ -442,24 +451,15 @@ class AuthController extends GetxController {
     );
 
     // TODO: into constructor and keyStore as class attribute
-    var getKeycloakCertsResponse = await http.get(
-      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs",
-    );
-    var keycloakCerts = json.decode(getKeycloakCertsResponse.body);
-
-    var keyStore = JsonWebKeyStore();
-    for (var key in keycloakCerts["keys"]) {
-      keyStore.addKey(JsonWebKey.fromJson(key));
-    }
 
     if (response.statusCode == 200) {
       var responseBody = json.decode(response.body);
 
       var access = JsonWebToken.unverified(responseBody["access_token"]);
-      var accessVerified = await access.verify(keyStore);
+      var accessVerified = await access.verify(_keyStore);
 
       var refresh = JsonWebToken.unverified(responseBody["refresh_token"]);
-      var refreshVerified = await refresh.verify(keyStore);
+      var refreshVerified = await refresh.verify(_keyStore);
 
       // TODO check header of refresh token
 
