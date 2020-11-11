@@ -400,6 +400,13 @@ class AlertDialogContentContainer extends StatelessWidget {
   }
 }
 
+debugPrintJWT(String token) {
+  var split = token.split(".");
+
+  var header = json.decode(utf8.decode(base64.decode(base64Url.normalize(split[0]))));
+  print(header);
+}
+
 class AuthController extends GetxController {
   final _isAuthenticated = false.obs;
   final _keyStore = JsonWebKeyStore();
@@ -408,11 +415,9 @@ class AuthController extends GetxController {
 
   AuthController() {
     http.get(
-      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs",
+      "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs"
     ).then((response) {
-      for (var key in json.decode(response.body)["keys"]) {
-        _keyStore.addKey(JsonWebKey.fromJson(key));
-      }
+      _keyStore.addKeySet(JsonWebKeySet.fromJson(json.decode(response.body)));
     });
   }
 
@@ -435,6 +440,11 @@ class AuthController extends GetxController {
 
   get isAuthenticated => _isAuthenticated.value;
 
+  set isAuthenticated(bool newIsAuthenticated) {
+    _isAuthenticated.value = newIsAuthenticated;
+    _isAuthenticated.refresh();
+  }
+
   login(String username, String password) async {
     print("$username $password");
 
@@ -450,37 +460,11 @@ class AuthController extends GetxController {
       }
     );
 
-    // TODO: into constructor and keyStore as class attribute
+    var success = await _setTokenFromResponse(response);
 
-    if (response.statusCode == 200) {
-      var responseBody = json.decode(response.body);
-
-      var access = JsonWebToken.unverified(responseBody["access_token"]);
-      var accessVerified = await access.verify(_keyStore);
-
-      var refresh = JsonWebToken.unverified(responseBody["refresh_token"]);
-      var refreshVerified = await refresh.verify(_keyStore);
-
-      // TODO check header of refresh token
-
-      //if (accessVerified && refreshVerified) {
-      if (accessVerified) {
-        _accessToken = access;
-        _refreshToken = refresh;
-
-        _cyclicallyRefreshToken();
-
-        _isAuthenticated.value = true;
-        _isAuthenticated.refresh();
-      } else {
-        // shouldn't happen
-        print("token unverified: $accessVerified, $refreshVerified");
-      }
-      //print((DateTime.now().millisecondsSinceEpoch / 1000).toInt());
-    } else {
-      // TODO: update login screen and tell it that username or
-      //       password are incorrect
-      print("failed");
+    if (success) {
+      _cyclicallyRefreshToken();
+      isAuthenticated = true;
     }
   }
 
@@ -499,14 +483,35 @@ class AuthController extends GetxController {
         }
       );
 
-      print("refresh response");
-      print(response.body);
-      // TODO: refresh_token
-      //
-      //       if refresh unsuccessful -> set token to be invalid
-      print("About to expire");
-      _cyclicallyRefreshToken();
+      isAuthenticated = await _setTokenFromResponse(response);
+
+      if (isAuthenticated)
+      {
+        print("successfully refreshed token");
+        _cyclicallyRefreshToken();
+      }
     });
+  }
+
+  Future<bool> _setTokenFromResponse(response) async {
+    if (response.statusCode == 200) {
+      var responseBody = json.decode(response.body);
+
+      var access = JsonWebToken.unverified(responseBody["access_token"]);
+      var accessVerified = await access.verify(_keyStore);
+
+      if (accessVerified) {
+        _accessToken = access;
+        _refreshToken = JsonWebToken.unverified(responseBody["refresh_token"]);
+        return true;
+      }
+
+      print("token verification error");
+      return false;
+    }
+
+    print("response error");
+    return false;
   }
 }
 
