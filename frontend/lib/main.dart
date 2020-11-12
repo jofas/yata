@@ -194,7 +194,11 @@ class YataTODOScreen extends StatelessWidget {
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: () => Get.back(), // TODO: dispose focusNode and textcontroller
+          onPressed: () {
+            textController.dispose();
+            focusNode.dispose();
+            Get.back();
+          },
           child: const Text("CANCEL"),
         ),
         ElevatedButton(
