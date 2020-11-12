@@ -27,22 +27,22 @@ class YataApp extends StatelessWidget {
       ),
       initialRoute: "/",
       getPages: [
-        GetPage(name: "/", page: () => LoginOrAppScreen(child: YataTODOScreen())),
-        GetPage(name: "/todo", page: () => LoginOrAppScreen(child: YataTODOScreen())),
-        GetPage(name: "/done", page: () => LoginOrAppScreen(child: YataDoneScreen())),
-        GetPage(name: "/bin", page: () => LoginOrAppScreen(child: YataDeleteScreen())),
+        GetPage(name: "/", page: () => YataBaseScreen(child: YataTODOScreen())),
+        GetPage(name: "/todo", page: () => YataBaseScreen(child: YataTODOScreen())),
+        GetPage(name: "/done", page: () => YataBaseScreen(child: YataDoneScreen())),
+        GetPage(name: "/bin", page: () => YataBaseScreen(child: YataDeleteScreen())),
       ],
     );
   }
 }
 
-class LoginOrAppScreen extends StatelessWidget {
+class YataBaseScreen extends StatelessWidget {
   AuthController authController;
   ElementsController elementsController;
 
   Widget child;
 
-  LoginOrAppScreen({this.child}) :
+  YataBaseScreen({this.child}) :
     authController = AuthController.findOrCreate(),
     elementsController = ElementsController.findOrCreate(),
     super();
@@ -62,7 +62,6 @@ class LoginOrAppScreen extends StatelessWidget {
         return LoadingScreen();
       }
 
-      // TODO: here I can make call to API
       return child;
     });
   }
