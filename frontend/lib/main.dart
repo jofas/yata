@@ -152,7 +152,7 @@ class YataTODOScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return YataScreen(
+    return YataContentScreen(
       title: "TODOs:",
       defaultText: "Great! Nothing TODO!",
       elementsList: ElementsList.todos,
@@ -218,7 +218,7 @@ class YataDoneScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return YataScreen(
+    return YataContentScreen(
       title: "Done:",
       defaultText: "Oh! You haven't done anything yet!",
       elementsList: ElementsList.done,
@@ -241,7 +241,7 @@ class YataDeleteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return YataScreen(
+    return YataContentScreen(
       title: "Deleted:",
       defaultText: "There is nothing here!",
       elementsList: ElementsList.deleted,
@@ -300,7 +300,7 @@ class YataDeleteScreen extends StatelessWidget {
   }
 }
 
-class YataScreen extends StatelessWidget {
+class YataContentScreen extends StatelessWidget {
   final ElementsController controller = Get.find();
   final _scrollController = new ScrollController();
 
@@ -316,7 +316,7 @@ class YataScreen extends StatelessWidget {
 
   final floatingActionButton;
 
-  YataScreen({
+  YataContentScreen({
     this.title,
     this.defaultText,
     this.elementsList,
