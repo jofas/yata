@@ -37,21 +37,45 @@ class YataApp extends StatelessWidget {
 }
 
 class LoginOrAppScreen extends StatelessWidget {
-  AuthController controller;
+  AuthController authController;
+  ElementsController elementsController;
 
   Widget child;
 
-  LoginOrAppScreen({this.child}) : controller = AuthController.findOrCreate();
+  LoginOrAppScreen({this.child}) :
+    authController = AuthController.findOrCreate(),
+    elementsController = ElementsController.findOrCreate(),
+    super();
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (!controller.isAuthenticated)
+
+      if (!authController.hasLoaded)
+        return LoadingScreen();
+
+      if (!authController.isAuthenticated)
         return LoginScreen();
+
+      if (!elementsController.hasLoaded) {
+        elementsController.load();
+        return LoadingScreen();
+      }
 
       // TODO: here I can make call to API
       return child;
     });
+  }
+}
+
+class LoadingScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 }
 
@@ -66,9 +90,6 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // TODO: proper login screen with username/password input,
-      //       which is passed to the authController calling the
-      //       REST API of keycloak
       body: Form(
         key: _formKey,
         child: Column(
@@ -330,6 +351,7 @@ class YataScreen extends StatelessWidget {
                     controller: _scrollController,
                     itemCount: len,
                     itemBuilder: (BuildContext context, int index) {
+                      // TODO: from Container to Card
                       return Container(
                         child: Padding(
                           padding: EdgeInsets.all(10.0),
@@ -408,26 +430,28 @@ debugPrintJWT(String token) {
   print(header);
 }
 
-class AuthController extends GetxController {
+class AuthController extends YataController {
   static const KEYCLOAK_BASE =
     "http://localhost:8080/auth/realms/yata/protocol/openid-connect";
 
   final _isAuthenticated = false.obs;
+
   final _keyStore = JsonWebKeyStore();
   final _client = http.Client();
 
   JsonWebToken _accessToken, _refreshToken;
 
-  AuthController() {
+  AuthController() : super() {
     _client.get("$KEYCLOAK_BASE/certs").then((response) {
       _keyStore.addKeySet(JsonWebKeySet.fromJson(json.decode(response.body)));
     });
 
-    _getRefreshTokenFromPersistentMemory().then((token) {
+    _getRefreshTokenFromPersistentMemory().then((token) async {
       if (token != null) {
         _refreshToken = JsonWebToken.unverified(token);
-        _cyclicallyRefreshToken();
+        await _cyclicallyRefreshToken();
       }
+      hasLoaded = true;
     });
   }
 
@@ -438,12 +462,6 @@ class AuthController extends GetxController {
       controller = Get.find();
     } catch (_) {
       controller = Get.put(AuthController());
-      // TODO: look for auth response in local storage
-      //       if there and refresh_token is still valid, refresh
-      //       if refresh successful -> logged in
-      //
-      //       save response to local storage
-
     }
     return controller;
   }
@@ -535,26 +553,14 @@ class AuthController extends GetxController {
   }
 }
 
-class ElementsController extends GetxController {
+class ElementsController extends YataController {
   final elements = Elements().obs;
   final client = http.Client();
 
-  ElementsController() {
-    // TODO: loading screen while this is processing
-    //       (put this into build or something (wrap with Obx maybe))
-    //
-    //        ListBuilder elements from Row to Card
+  ElementsController() : super();
 
-    // TODO: this into method and call method in build of YataPage
-
-    client.get("http://localhost:9999/").then((response) {
-      // TODO: error management
-      setElementsFromJsonString(response.body);
-      print("Gotten Elements from server");
-      print("Gotten Elements from server: ${response.body}");
-    });
-  }
-
+  // TODO: learn introspection and abstract this into YataController
+  //       as well
   factory ElementsController.findOrCreate() {
     ElementsController controller;
 
@@ -564,6 +570,18 @@ class ElementsController extends GetxController {
       controller = Get.put(ElementsController());
     }
     return controller;
+  }
+
+  load() async {
+    try {
+      var response = await client.get("http://localhost:9999/");
+      // TODO: error management
+      setElementsFromJsonString(response.body);
+      print("Gotten Elements from server");
+      print("Gotten Elements from server: ${response.body}");
+    } finally {
+      hasLoaded = true;
+    }
   }
 
   addTODO(String value) {
@@ -644,6 +662,17 @@ class ElementsController extends GetxController {
       // TODO: error management
       print("Got Response: ${response.statusCode}");
     });
+  }
+}
+
+class YataController extends GetxController {
+  final _hasLoaded = false.obs;
+
+  get hasLoaded => _hasLoaded.value;
+
+  set hasLoaded(bool newHasLoaded) {
+    _hasLoaded.value = newHasLoaded;
+    _hasLoaded.refresh();
   }
 }
 
