@@ -30,7 +30,7 @@ dependencies:
 
   jose:
 
-  localstorage:
+  cross_local_storage:
 
   cupertino_icons: ^1.0.0
 

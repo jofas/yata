@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
-import 'package:localstorage/localstorage.dart';
+import 'package:cross_local_storage/cross_local_storage.dart';
 
 void main() {
   runApp(YataApp());
@@ -415,7 +415,6 @@ class AuthController extends GetxController {
   final _isAuthenticated = false.obs;
   final _keyStore = JsonWebKeyStore();
   final _client = http.Client();
-  final _localStorage = LocalStorage("auth.json");
 
   JsonWebToken _accessToken, _refreshToken;
 
@@ -424,13 +423,12 @@ class AuthController extends GetxController {
       _keyStore.addKeySet(JsonWebKeySet.fromJson(json.decode(response.body)));
     });
 
-    _accessToken = _localStorage.getItem("access_token");
-    _refreshToken = _localStorage.getItem("refresh_token");
-
-    if (_refreshToken != null) {
-      print("HELLOOOOO");
-      _cyclicallyRefreshToken().then(() {print("refreshed token!");});
-    }
+    _getRefreshTokenFromPersistentMemory().then((token) {
+      if (token != null) {
+        _refreshToken = JsonWebToken.unverified(token);
+        _cyclicallyRefreshToken();
+      }
+    });
   }
 
   factory AuthController.findOrCreate() {
@@ -478,7 +476,7 @@ class AuthController extends GetxController {
     _setAuthenticationAndCyclicallyRefreshToken(response);
   }
 
-  _cyclicallyRefreshToken() async {
+  Future<void> _cyclicallyRefreshToken() async {
     var response = await _client.post("$KEYCLOAK_BASE/token",
       body: {
         "refresh_token": _refreshToken.toCompactSerialization(),
@@ -512,12 +510,7 @@ class AuthController extends GetxController {
         _accessToken = access;
         _refreshToken = JsonWebToken.unverified(responseBody["refresh_token"]);
 
-        // TODO: change to other local storage implementation
-        //       and only save the refresh token
-        _localStorage.setItem(
-          "access_token", _accessToken.toCompactSerialization());
-        _localStorage.setItem(
-          "refresh_token", _refreshToken.toCompactSerialization());
+        _saveRefreshTokenToPersistentMemory();
 
         return true;
       }
@@ -528,6 +521,17 @@ class AuthController extends GetxController {
 
     print("response error");
     return false;
+  }
+
+  Future<String> _getRefreshTokenFromPersistentMemory() async {
+    var ls = await LocalStorage.getInstance();
+    return ls.get("refresh_token");
+  }
+
+  _saveRefreshTokenToPersistentMemory() async {
+    var ls = await LocalStorage.getInstance();
+    ls.setString("refresh_token", _refreshToken.toCompactSerialization());
+    print("saved refresh_token to persistent memory");
   }
 }
 
