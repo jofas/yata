@@ -461,6 +461,8 @@ class AuthController extends YataController {
     return controller;
   }
 
+  get accessToken => _accessToken;
+
   get isAuthenticated => _isAuthenticated.value;
 
   set isAuthenticated(bool newIsAuthenticated) {
@@ -552,6 +554,8 @@ class ElementsController extends YataController {
   final elements = Elements().obs;
   final client = http.Client();
 
+  final AuthController authController = AuthController.findOrCreate();
+
   ElementsController() : super();
 
   // TODO: learn introspection and abstract this into YataController
@@ -569,7 +573,13 @@ class ElementsController extends YataController {
 
   load() async {
     try {
-      var response = await client.get("http://localhost:9999/");
+      // TODO: add access token to header
+      var token = authController.accessToken.toCompactSerialization();
+      var response = await client.get("http://localhost:9999/",
+        headers: {
+          "Authorization": "Bearer <$token>",
+        }
+      );
       // TODO: error management
       setElementsFromJsonString(response.body);
       print("Gotten Elements from server");

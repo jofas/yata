@@ -173,10 +173,16 @@ async fn init_database() -> MDBResult<Collection> {
   Ok(db.collection("yata_collection"))
 }
 
+use actix_web::client::Client as ActixClient;
+use serde_json::Value;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   println!("STARTING YATA_API SERVER");
 
+  /*
+
+  // PLAYING AROUND WITH MONGODB
   let collection = init_database().await.unwrap();
 
   // save the todos as {"value": "...", "state": "{todo|done|deleted}"}
@@ -208,10 +214,24 @@ async fn main() -> std::io::Result<()> {
   //collection.find_one_and_update(find, , None).await.unwrap();
 
   panic!();
+  */
+
+  // TODO: get keys from keycloak
+  let mut client = ActixClient::default();
+
+  let response = client.get("http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs")
+    .send()
+    .await
+    .unwrap()
+    .json::<Value>()
+    .await
+    .unwrap();
+
+  println!("{:?}", response.get("keys").unwrap());
 
   HttpServer::new(move || {
     App::new()
-      .data(collection.clone())
+      //.data(collection.clone())
       .wrap(Cors::permissive())
       .service(get_elements)
       .service(add_todo)
