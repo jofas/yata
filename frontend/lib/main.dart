@@ -37,15 +37,12 @@ class YataApp extends StatelessWidget {
 }
 
 class YataBaseScreen extends StatelessWidget {
-  AuthController authController;
-  ElementsController elementsController;
+  final AuthController authController = AuthController.findOrCreate();
+  final ElementsController elementsController = ElementsController.findOrCreate();
 
-  Widget child;
+  final Widget child;
 
-  YataBaseScreen({this.child}) :
-    authController = AuthController.findOrCreate(),
-    elementsController = ElementsController.findOrCreate(),
-    super();
+  YataBaseScreen({this.child}) : super();
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +76,7 @@ class LoadingScreen extends StatelessWidget {
 }
 
 class LoginScreen extends StatelessWidget {
-  final AuthController controller = Get.find();
+  final AuthController controller = AuthController.findOrCreate();
 
   final _formKey = GlobalKey<FormState>();
 
@@ -146,9 +143,7 @@ class LoginScreen extends StatelessWidget {
 }
 
 class YataTODOScreen extends StatelessWidget {
-  ElementsController controller;
-
-  YataTODOScreen() : controller = ElementsController.findOrCreate();
+  final ElementsController controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -212,9 +207,7 @@ class YataTODOScreen extends StatelessWidget {
 }
 
 class YataDoneScreen extends StatelessWidget {
-  ElementsController controller;
-
-  YataDoneScreen() : controller = ElementsController.findOrCreate();
+  final ElementsController controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -235,9 +228,7 @@ class YataDoneScreen extends StatelessWidget {
 }
 
 class YataDeleteScreen extends StatelessWidget {
-  ElementsController controller;
-
-  YataDeleteScreen() : controller = ElementsController.findOrCreate();
+  final ElementsController controller = ElementsController.findOrCreate();
 
   @override
   Widget build(BuildContext context) {
@@ -301,8 +292,9 @@ class YataDeleteScreen extends StatelessWidget {
 }
 
 class YataContentScreen extends StatelessWidget {
-  final ElementsController controller = Get.find();
-  final _scrollController = new ScrollController();
+  final ElementsController controller = ElementsController.findOrCreate();
+
+  final _scrollController = ScrollController();
 
   final String title;
   final String defaultText;
