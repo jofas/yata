@@ -4,7 +4,9 @@ use actix_web::Error as ActixError;
 use actix_web::dev::ServiceRequest;
 
 use actix_web_httpauth::middleware::HttpAuthentication;
+use actix_web_httpauth::extractors::AuthenticationError;
 use actix_web_httpauth::extractors::bearer::BearerAuth;
+use actix_web_httpauth::extractors::bearer::Config as BearerConfig;
 
 use actix_cors::Cors;
 
@@ -189,17 +191,23 @@ async fn auth(
   bearer: BearerAuth,
   key_set:Arc<KeyStore>) -> Result<ServiceRequest, ActixError>
 {
-  match key_set.clone().verify(bearer.token()) {
+  match key_set.verify(bearer.token()) {
     Ok(jwt) => {
+      // TODO: make sure user can access path
+
       println!("{:?}", jwt.payload());
-      println!("name={}", jwt.payload().get_str("name").unwrap());
+      Ok(req)
     }
     Err(JWTError { msg, typ: _ }) => {
-      println!("Could not verify token. Reason: {}", msg);
+      eprintln!("Could not verify token. Reason: {}", msg);
+
+      let config = req.app_data::<BearerConfig>()
+        .map(|data| data.clone())
+        .unwrap_or_else(Default::default);
+
+      Err(AuthenticationError::from(config).into())
     }
   }
-
-  Ok(req)
 }
 
 #[actix_web::main]
@@ -249,8 +257,8 @@ async fn main() -> std::io::Result<()> {
   HttpServer::new(move || {
     App::new()
       //.data(collection.clone())
-      .wrap(Cors::permissive())
       .wrap(HttpAuthentication::bearer(auth_fn.clone()))
+      .wrap(Cors::permissive())
       .service(get_elements)
       .service(add_todo)
       .service(set_done)
