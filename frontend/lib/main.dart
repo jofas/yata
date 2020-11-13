@@ -577,7 +577,7 @@ class ElementsController extends YataController {
       var token = authController.accessToken.toCompactSerialization();
       var response = await client.get("http://localhost:9999/",
         headers: {
-          "Authorization": "Bearer <$token>",
+          "Authorization": "Bearer $token",
         }
       );
       // TODO: error management

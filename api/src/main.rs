@@ -1,7 +1,15 @@
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse,
   HttpServer, Responder};
+use actix_web::Error as ActixError;
+use actix_web::dev::ServiceRequest;
+
+use actix_web_httpauth::middleware::HttpAuthentication;
+use actix_web_httpauth::extractors::bearer::BearerAuth;
 
 use actix_cors::Cors;
+
+use jwks_client::keyset::KeyStore;
+use jwks_client::error::Error as JWTError;
 
 use serde_derive::{Serialize, Deserialize};
 
@@ -15,7 +23,10 @@ use futures::stream::StreamExt;
 #[macro_use]
 extern crate lazy_static;
 
-use std::sync::{Mutex};
+#[macro_use]
+extern crate partial_application;
+
+use std::sync::{Mutex, Arc};
 
 #[derive(Serialize, Clone)]
 struct Elements {
@@ -173,8 +184,23 @@ async fn init_database() -> MDBResult<Collection> {
   Ok(db.collection("yata_collection"))
 }
 
-use actix_web::client::Client as ActixClient;
-use serde_json::Value;
+async fn auth(
+  req: ServiceRequest,
+  bearer: BearerAuth,
+  key_set:Arc<KeyStore>) -> Result<ServiceRequest, ActixError>
+{
+  match key_set.clone().verify(bearer.token()) {
+    Ok(jwt) => {
+      println!("{:?}", jwt.payload());
+      println!("name={}", jwt.payload().get_str("name").unwrap());
+    }
+    Err(JWTError { msg, typ: _ }) => {
+      println!("Could not verify token. Reason: {}", msg);
+    }
+  }
+
+  Ok(req)
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -216,23 +242,15 @@ async fn main() -> std::io::Result<()> {
   panic!();
   */
 
-  // TODO: get keys from keycloak
-  let mut client = ActixClient::default();
-
-  let response = client.get("http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs")
-    .send()
-    .await
-    .unwrap()
-    .json::<Value>()
-    .await
-    .unwrap();
-
-  println!("{:?}", response.get("keys").unwrap());
+  let url = "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs";
+  let key_set = Arc::new(KeyStore::new_from(url).await.unwrap());
+  let auth_fn = partial!(move auth => _, _, key_set.clone());
 
   HttpServer::new(move || {
     App::new()
       //.data(collection.clone())
       .wrap(Cors::permissive())
+      .wrap(HttpAuthentication::bearer(auth_fn.clone()))
       .service(get_elements)
       .service(add_todo)
       .service(set_done)
