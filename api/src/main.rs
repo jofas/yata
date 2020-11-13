@@ -34,11 +34,17 @@ use std::sync::Arc;
 #[derive(Serialize, Deserialize, Debug)]
 enum ElementStatus { Todo, Done, Deleted }
 
+// TODO: timestamp for ordering
 #[derive(Serialize, Deserialize, Debug)]
 struct Element {
   id: String,
   content: String,
   status: ElementStatus,
+}
+
+#[derive(Serialize)]
+struct SingleId {
+  id: String
 }
 
 #[derive(Deserialize)]
@@ -86,10 +92,15 @@ async fn add_todo(
     "status": to_bson(&ElementStatus::Todo).unwrap(),
   };
 
-  // TODO: return oid as response
-  let elem = collection.insert_one(insert, None).await.unwrap();
-  println!("{:?}", elem);
-  HttpResponse::Ok().finish()
+  let id = collection.insert_one(insert, None)
+    .await
+    .unwrap()
+    .inserted_id
+    .as_object_id()
+    .unwrap()
+    .to_hex();
+
+  HttpResponse::Ok().json(SingleId{id: id})
 }
 
 #[put("/{user}/{id}/status")]

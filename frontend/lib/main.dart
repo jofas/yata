@@ -574,8 +574,8 @@ class ElementsController extends YataController {
   }
 
   load() async {
+    // TODO: error management
     try {
-      // TODO: add access token to header
       var token = authController.accessToken.toCompactSerialization();
       var response = await client.get(
         "http://localhost:9999/${authController.user}",
@@ -583,7 +583,7 @@ class ElementsController extends YataController {
           "Authorization": "Bearer $token",
         }
       );
-      // TODO: error management
+
       //setElementsFromJsonString(response.body);
       print("Gotten Elements from server");
       print("Gotten Elements from server: ${response.body}");
@@ -675,13 +675,11 @@ class ElementsController extends YataController {
         body: body,
       );
       print("Got Response: ${response.statusCode}");
+      print("${response.body}");
     } catch (e) {
       print(e.runtimeType);
       print(e.message);
     }
-
-    print(url);
-    print(body);
   }
 }
 
