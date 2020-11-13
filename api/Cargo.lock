@@ -2882,7 +2882,6 @@ dependencies = [
  "actix-web-httpauth",
  "futures",
  "jwks-client",
- "lazy_static",
  "mongodb",
  "partial_application",
  "serde",

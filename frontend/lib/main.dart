@@ -463,6 +463,8 @@ class AuthController extends YataController {
 
   get accessToken => _accessToken;
 
+  get user => _accessToken.claims["preferred_username"];
+
   get isAuthenticated => _isAuthenticated.value;
 
   set isAuthenticated(bool newIsAuthenticated) {
@@ -575,13 +577,14 @@ class ElementsController extends YataController {
     try {
       // TODO: add access token to header
       var token = authController.accessToken.toCompactSerialization();
-      var response = await client.get("http://localhost:9999/",
+      var response = await client.get(
+        "http://localhost:9999/${authController.user}",
         headers: {
           "Authorization": "Bearer $token",
         }
       );
       // TODO: error management
-      setElementsFromJsonString(response.body);
+      //setElementsFromJsonString(response.body);
       print("Gotten Elements from server");
       print("Gotten Elements from server: ${response.body}");
     } finally {
@@ -591,7 +594,7 @@ class ElementsController extends YataController {
 
   addTODO(String value) {
     elements.value.addTODO(value);
-    _post(path: "add_todo", body: jsonEncode({"value": value}));
+    _post(path: "add_todo", body: jsonEncode({"content": value}));
     elements.refresh();
   }
 
@@ -658,15 +661,27 @@ class ElementsController extends YataController {
     elements.refresh();
   }
 
-  _post({String path, String body: null}) {
-    client.post(
-      "http://localhost:9999/$path",
-      headers: {"content-type": "application/json"},
-      body: body,
-    ).then((response) {
-      // TODO: error management
+  _post({String path, String body: null}) async {
+    var url = "http://localhost:9999/${authController.user}/$path";
+    var token = authController.accessToken.toCompactSerialization();
+
+    try {
+      var response = await client.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "content-type": "application/json",
+        },
+        body: body,
+      );
       print("Got Response: ${response.statusCode}");
-    });
+    } catch (e) {
+      print(e.runtimeType);
+      print(e.message);
+    }
+
+    print(url);
+    print(body);
   }
 }
 

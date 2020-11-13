@@ -1,7 +1,8 @@
-use actix_web::{get, post, web, App, HttpRequest, HttpResponse,
+use actix_web::{get, post, put, delete, web, App, HttpResponse,
   HttpServer, Responder};
 use actix_web::Error as ActixError;
 use actix_web::dev::ServiceRequest;
+use actix_web::dev::Service;
 
 use actix_web_httpauth::middleware::HttpAuthentication;
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -18,172 +19,100 @@ use serde_derive::{Serialize, Deserialize};
 use mongodb::{Client, Collection};
 use mongodb::options::ClientOptions;
 use mongodb::error::Result as MDBResult;
-use mongodb::bson::doc;
+use mongodb::bson::{doc, Document};
+use mongodb::bson::{to_bson, from_bson};
+use mongodb::bson::oid::ObjectId;
 
 use futures::stream::StreamExt;
-
-#[macro_use]
-extern crate lazy_static;
+use futures::future::FutureExt;
 
 #[macro_use]
 extern crate partial_application;
 
-use std::sync::{Mutex, Arc};
+use std::sync::Arc;
 
-#[derive(Serialize, Clone)]
-struct Elements {
-  todos: Vec<String>,
-  done: Vec<String>,
-  deleted: Vec<String>
-}
+#[derive(Serialize, Deserialize, Debug)]
+enum ElementStatus { Todo, Done, Deleted }
 
-impl Elements {
-  fn new() -> Self {
-    Self {todos: Vec::new(), done: Vec::new(), deleted: Vec::new()}
-  }
-
-  fn add_todo(&mut self, value: String) {
-    self.todos.insert(0, value);
-  }
-
-  fn set_done(&mut self, index: usize) {
-    move_element(&mut self.todos, &mut self.done, index);
-  }
-
-  fn unset_done(&mut self, index: usize) {
-    move_element(&mut self.done, &mut self.todos, index);
-  }
-
-  fn unset_deleted(&mut self, index: usize) {
-    move_element(&mut self.deleted, &mut self.todos, index);
-  }
-
-  fn set_todo_deleted(&mut self, index: usize) {
-    move_element(&mut self.todos, &mut self.deleted, index);
-  }
-
-  fn set_done_deleted(&mut self, index: usize) {
-    move_element(&mut self.done, &mut self.deleted, index);
-  }
-
-  fn delete_completely(&mut self, index: usize) {
-    self.deleted.remove(index);
-  }
-
-  fn delete_all_completely(&mut self) {
-    self.deleted = Vec::new();
-  }
-}
-
-fn move_element(src: &mut Vec<String>, dest: &mut Vec<String>, index: usize) {
-  dest.insert(0, src.remove(index));
+#[derive(Serialize, Deserialize, Debug)]
+struct Element {
+  id: String,
+  content: String,
+  status: ElementStatus,
 }
 
 #[derive(Deserialize)]
-struct AddTodo {
-  value: String
+struct SingleContent {
+  content: String,
 }
 
-// data as global variable
-//
-// TODO: into database
-//
-// somehow get global db handle (via App.data)
-//
-// change api data model:
-//
-// Entry {
-//  value: String,
-//  list: Enum<Todo, Done, Deleted>,
-//  index: usize,
-// }
-//
-//
-//
-// in event api: query for the exact entry with index and list
-//               sucks too, since I need to change indices
-//
-//
-lazy_static! {
-  static ref DATA: Mutex<Elements> = Mutex::new(Elements::new());
+#[derive(Deserialize)]
+struct SingleStatus {
+  status: ElementStatus,
 }
 
-#[get("/")]
-async fn get_elements(db: web::Data<Collection>) -> impl Responder {
-  /*
-  let filter = doc!{};
-  let mut cursor = db.find(filter, None).await.unwrap();
+#[get("/{user}")]
+async fn get_elements(
+  web::Path((user,)): web::Path<(String,)>,
+  collection: web::Data<Collection>) -> impl Responder
+{
+  let filter = doc!{"user": user};
+  let mut cursor = collection.find(filter, None).await.unwrap();
+
+  let mut res: Vec<Element> = Vec::new();
 
   while let Some(result) = cursor.next().await {
     let document = result.unwrap();
+    let id = document.get_object_id("_id").unwrap().to_hex();
+    let content = String::from(document.get_str("content").unwrap());
+    let status: ElementStatus =
+      from_bson(document.get("status").unwrap().clone()).unwrap();
 
-    println!("{:?}", result.unwrap());
+    res.push(Element{id: id, content: content, status: status});
   }
-  */
-  HttpResponse::Ok().json((*DATA.lock().unwrap()).clone())
+
+  HttpResponse::Ok().json(res)
 }
 
-#[post("/add_todo")]
-async fn add_todo(todo: web::Json<AddTodo>) -> impl Responder {
-  DATA.lock().unwrap().add_todo(todo.value.clone());
-  println!("Adding TODO: {}", todo.value);
+#[post("/{user}/add_todo")]
+async fn add_todo(
+  web::Path((user,)): web::Path<(String,)>,
+  collection: web::Data<Collection>,
+  todo: web::Json<SingleContent>) -> impl Responder
+{
+  let insert = doc! {
+    "user": user,
+    "content": todo.content.clone(),
+    "status": to_bson(&ElementStatus::Todo).unwrap(),
+  };
+
+  // TODO: return oid as response
+  let elem = collection.insert_one(insert, None).await.unwrap();
+  println!("{:?}", elem);
   HttpResponse::Ok().finish()
 }
 
-#[post("/set_done/{index}")]
-async fn set_done(web::Path((index,)): web::Path<(usize,)>) -> impl Responder {
-  DATA.lock().unwrap().set_done(index);
-  println!("Setting TODO to done: {}", index);
+#[put("/{user}/{id}/status")]
+async fn set_status(
+  web::Path((user, id)): web::Path<(String, usize)>,
+  new_status: web::Json<SingleStatus>) -> impl Responder
+{
   HttpResponse::Ok().finish()
 }
 
-#[post("/unset_done/{index}")]
-async fn unset_done(web::Path((index,)): web::Path<(usize,)>) -> impl Responder {
-  DATA.lock().unwrap().unset_done(index);
-  println!("Unsetting done: {}", index);
+#[delete("/{user}/{id}")]
+async fn delete_element(
+  web::Path((user, id)): web::Path<(String, usize)>) -> impl Responder
+{
   HttpResponse::Ok().finish()
 }
 
-#[post("/unset_deleted/{index}")]
-async fn unset_deleted(web::Path((index,)): web::Path<(usize,)>) -> impl Responder {
-  DATA.lock().unwrap().unset_deleted(index);
-  println!("Unsetting deleted: {}", index);
-  HttpResponse::Ok().finish()
-}
-
-#[post("/set_todo_deleted/{index}")]
-async fn set_todo_deleted(web::Path((index,)): web::Path<(usize,)>) -> impl Responder {
-  DATA.lock().unwrap().set_todo_deleted(index);
-  println!("Setting TODO to deleted: {}", index);
-  HttpResponse::Ok().finish()
-}
-
-#[post("/set_done_deleted/{index}")]
-async fn set_done_deleted(web::Path((index,)): web::Path<(usize,)>) -> impl Responder {
-  DATA.lock().unwrap().set_done_deleted(index);
-  println!("Setting done to deleted: {}", index);
-  HttpResponse::Ok().finish()
-}
-
-#[post("/delete_completely/{index}")]
-async fn delete_completely(web::Path((index,)): web::Path<(usize,)>) -> impl Responder {
-  DATA.lock().unwrap().delete_completely(index);
-  println!("deleting completely: {}", index);
-  HttpResponse::Ok().finish()
-}
-
-#[post("/delete_completely")]
-async fn delete_all_completely() -> impl Responder {
-  DATA.lock().unwrap().delete_all_completely();
+#[post("/{user}/empty_bin")]
+async fn empty_bin(
+  web::Path((user,)): web::Path<(String,)>) -> impl Responder
+{
   println!("deleting all completely");
   HttpResponse::Ok().finish()
-}
-
-async fn init_database() -> MDBResult<Collection> {
-  let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
-  let client = Client::with_options(client_options)?;
-  let db = client.database("yata_db");
-  Ok(db.collection("yata_collection"))
 }
 
 async fn auth(
@@ -191,15 +120,18 @@ async fn auth(
   bearer: BearerAuth,
   key_set:Arc<KeyStore>) -> Result<ServiceRequest, ActixError>
 {
+  println!("hello from auth");
   match key_set.verify(bearer.token()) {
     Ok(jwt) => {
       // TODO: make sure user can access path
 
-      println!("{:?}", jwt.payload());
+      //println!("{:?}", jwt.payload());
+      println!("{} {}", jwt.payload().get_str("preferred_username").unwrap(),
+        req.path());
       Ok(req)
     }
     Err(JWTError { msg, typ: _ }) => {
-      eprintln!("Could not verify token. Reason: {}", msg);
+      println!("Could not verify token. Reason: {}", msg);
 
       let config = req.app_data::<BearerConfig>()
         .map(|data| data.clone())
@@ -210,17 +142,24 @@ async fn auth(
   }
 }
 
+async fn init_database() -> MDBResult<Collection> {
+  let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
+  let client = Client::with_options(client_options)?;
+  let database = client.database("yata_db");
+  Ok(database.collection("yata_collection"))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   println!("STARTING YATA_API SERVER");
 
-  /*
-
-  // PLAYING AROUND WITH MONGODB
   let collection = init_database().await.unwrap();
 
+  /*
   // save the todos as {"value": "...", "state": "{todo|done|deleted}"}
   // and have a collection for each user
+
+  let collection = db.collection("yata_collection");
 
   let elems = doc! {
     "user": "test",
@@ -256,18 +195,23 @@ async fn main() -> std::io::Result<()> {
 
   HttpServer::new(move || {
     App::new()
-      //.data(collection.clone())
+      .data(collection.clone())
       .wrap(HttpAuthentication::bearer(auth_fn.clone()))
-      .wrap(Cors::permissive())
+      .wrap(Cors::permissive()) // TODO: only yata_frontend
+      /*
+      .wrap_fn(|req, srv| {
+        println!("OMG req!");
+        srv.call(req).map(|res| {
+          println!("{:?}", res);
+          res
+        })
+      })
+      */
       .service(get_elements)
       .service(add_todo)
-      .service(set_done)
-      .service(unset_done)
-      .service(unset_deleted)
-      .service(set_todo_deleted)
-      .service(set_done_deleted)
-      .service(delete_completely)
-      .service(delete_all_completely)
+      .service(set_status)
+      .service(delete_element)
+      .service(empty_bin)
   })
   .bind("0.0.0.0:9999")?
   .run()
