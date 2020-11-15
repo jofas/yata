@@ -16,3 +16,4 @@ partial_application = "*"
 mongodb = "*"
 futures = "*"
 jwks-client = "*"
+chrono = {version = "*", features=["serde"]}

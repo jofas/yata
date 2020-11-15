@@ -26,6 +26,9 @@ use mongodb::bson::oid::ObjectId;
 use futures::stream::StreamExt;
 use futures::future::FutureExt;
 
+use chrono::DateTime;
+use chrono::offset::Utc;
+
 #[macro_use]
 extern crate partial_application;
 
@@ -40,6 +43,7 @@ struct Element {
   id: String,
   content: String,
   status: ElementStatus,
+  created: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -73,8 +77,14 @@ async fn get_elements(
     let content = String::from(document.get_str("content").unwrap());
     let status: ElementStatus =
       from_bson(document.get("status").unwrap().clone()).unwrap();
+    let created = document.get_datetime("created")
+      .map(|d| *d)
+      .or_else(|_| Ok(Utc::now()) as Result<DateTime<Utc>, bool>)
+      .unwrap();
 
-    res.push(Element{id: id, content: content, status: status});
+    res.push(Element{
+      id: id, content: content, status: status, created: created
+    });
   }
 
   HttpResponse::Ok().json(res)
@@ -90,6 +100,7 @@ async fn add_todo(
     "user": user,
     "content": todo.content.clone(),
     "status": to_bson(&ElementStatus::Todo).unwrap(),
+    "created": Utc::now(),
   };
 
   let id = collection.insert_one(insert, None)
