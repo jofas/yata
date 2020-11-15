@@ -385,7 +385,11 @@ class YataContentScreen extends StatelessWidget {
         currentIndex: elementsList.index,
         onTap: (int index) {
           if (index != elementsList.index)
-            controller.routeByIndex(index);
+            switch (index) {
+              case 0: Get.toNamed("/todo"); break;
+              case 1: Get.toNamed("/done"); break;
+              case 2: Get.toNamed("/bin"); break;
+            }
         },
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -584,9 +588,7 @@ class ElementsController extends YataController {
         }
       );
 
-      //setElementsFromJsonString(response.body);
-      print("Gotten Elements from server");
-      print("Gotten Elements from server: ${response.body}");
+      setElementsFromJsonString(response.body);
     } finally {
       hasLoaded = true;
     }
@@ -642,23 +644,20 @@ class ElementsController extends YataController {
 
   getList(ElementsList list) => elements.value.getList(list);
 
-  // TODO: not in controller
-  routeByIndex(int index) {
-    switch (index) {
-      case 0: Get.toNamed("/todo"); break;
-      case 1: Get.toNamed("/done"); break;
-      case 2: Get.toNamed("/bin"); break;
-    }
-  }
-
   setElementsFromJsonString(String jsonString) {
     var jsonElements = jsonDecode(jsonString);
 
+    print(jsonElements);
+    for (var element in jsonElements) {
+      print(element);
+    }
+    /*
     elements.value.todos = List<String>.from(jsonElements["todos"]);
     elements.value.done = List<String>.from(jsonElements["done"]);
     elements.value.deleted = List<String>.from(jsonElements["deleted"]);
 
     elements.refresh();
+    */
   }
 
   _post({String path, String body: null}) async {
@@ -695,6 +694,15 @@ class YataController extends GetxController {
 }
 
 enum ElementsList { todos, done, deleted }
+
+enum ElementStatus { Todo, Done, Deleted }
+
+class Element {
+  String id;
+  String content;
+  ElementStatus status;
+  DateTime created;
+}
 
 class Elements {
   List<String> todos = [];
