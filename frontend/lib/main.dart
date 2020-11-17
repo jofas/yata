@@ -609,7 +609,7 @@ class ElementsController extends YataController {
     _sortByCreated();
 
     print(_todos.value);
-    // TODO: send datetime for adding todo as well
+    // TODO: get whole element as return from post to /add_todo
 
     // TODO: put in three lists
     //       sort the lists
@@ -631,7 +631,8 @@ class ElementsController extends YataController {
   }
 
   _sortByCreated() {
-    int Function(Element, Element) compare = (a, b) => -a.created.compareTo(b.created);
+    int Function(Element, Element) compare =
+      (a, b) => a.created.compareTo(b.created);
 
     _todos.value.sort(compare);
     _done.value.sort(compare);
