@@ -455,14 +455,11 @@ class AuthController extends YataController {
   }
 
   factory AuthController.findOrCreate() {
-    AuthController controller;
-
     try {
-      controller = Get.find();
+      return Get.find();
     } catch (_) {
-      controller = Get.put(AuthController());
+      return Get.put(AuthController());
     }
-    return controller;
   }
 
   get accessToken => _accessToken;
@@ -585,8 +582,9 @@ class ElementsController extends YataController {
           "Authorization": "Bearer $token",
         }
       );
-
       _setElementsFromJsonString(response.body);
+    } catch (e) {
+      print(e.message);
     } finally {
       hasLoaded = true;
     }
@@ -596,26 +594,10 @@ class ElementsController extends YataController {
     var jsonElements = jsonDecode(jsonString);
 
     for (var jsonElement in jsonElements) {
-      var element = _parseElement(jsonElement);
-      _addElement(element);
+      _addElement(Element.fromJson(jsonElement));
     }
 
     _sortByCreated();
-
-    print(_todos.value);
-    // TODO: get whole element as return from post to /add_todo
-
-    // TODO: implement operations
-  }
-
-  // TODO: to named constructor
-  Element _parseElement(Map<String, dynamic> jsonElement) {
-    return Element(
-      id: jsonElement["id"],
-      content: jsonElement["content"],
-      status: stringToElementStatus(jsonElement["status"]),
-      created: DateTime.parse(jsonElement["created"]),
-    );
   }
 
   _addElement(Element element) {
@@ -647,7 +629,7 @@ class ElementsController extends YataController {
   addTODO(String content) async {
     var url = "http://localhost:9999/${authController.user}/add_todo";
     var token = authController.accessToken.toCompactSerialization();
-
+    // TODO: error mangement
     try {
       var response = await client.post(
         url,
@@ -657,8 +639,9 @@ class ElementsController extends YataController {
         },
         body: json.encode({"content": content}),
       );
-      var element = _parseElement(jsonDecode(response.body));
+      var element = Element.fromJson(jsonDecode(response.body));
       _addElement(element);
+      // TODO: addSorted !!!!
       _sortByCreated();
     } catch (e) {
       print(e.runtimeType);
@@ -667,29 +650,66 @@ class ElementsController extends YataController {
   }
 
   setDone(int index) {
-    return;
+    _putStatus(_todos[index].id, ElementStatus.Done);
+    _changeLocalStatus(_todos, index, ElementStatus.Done);
   }
 
   unsetDone(int index) {
-    return;
+    _putStatus(_done[index].id, ElementStatus.Todo);
+    _changeLocalStatus(_done, index, ElementStatus.Todo);
   }
 
   unsetDeleted(int index) {
-    return;
+    _putStatus(_deleted[index].id, ElementStatus.Todo);
+    _changeLocalStatus(_deleted, index, ElementStatus.Todo);
   }
 
   setTODODeleted(int index) {
-    return;
+    _putStatus(_todos[index].id, ElementStatus.Deleted);
+    _changeLocalStatus(_todos, index, ElementStatus.Deleted);
   }
 
   setDoneDeleted(int index) {
-    return;
+    _putStatus(_done[index].id, ElementStatus.Deleted);
+    _changeLocalStatus(_done, index, ElementStatus.Deleted);
   }
 
+  _putStatus(String elementId, ElementStatus status) async {
+    var url = "http://localhost:9999/${authController.user}/$elementId/status";
+    var token = authController.accessToken.toCompactSerialization();
+
+    try {
+      var response = await client.put(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "content-type": "application/json",
+        },
+        body: json.encode({"status": elementStatusToString(status)}),
+      );
+
+      // TODO: handle wrong status codes
+      print(response.statusCode);
+
+    } catch (e) {
+      print(e.message);
+    }
+  }
+
+  _changeLocalStatus(RxList<Element> src, int index, ElementStatus status) {
+    src[index].status = status;
+    _addElement(src[index]);
+    src.removeAt(index);
+    src.refresh();
+    _sortByCreated();
+  }
+
+  /* delete /{user}/{id} */
   deleteCompletely(int index) {
     return;
   }
 
+  /* post /{user}/empty_bin */
   deleteAllCompletely() {
     return;
   }
@@ -724,7 +744,10 @@ enum ElementStatus { Todo, Done, Deleted }
 
 ElementStatus stringToElementStatus(String str) =>
   ElementStatus.values.firstWhere(
-    (e) => e.toString().split(".")[1] == str);
+    (e) => elementStatusToString(e) == str);
+
+String elementStatusToString(ElementStatus status) =>
+  status.toString().split(".")[1];
 
 class Element {
   String id;
@@ -733,6 +756,13 @@ class Element {
   DateTime created;
 
   Element({this.id, this.content, this.status, this.created});
+
+  Element.fromJson(Map<String, dynamic> jsonElement) : this(
+    id: jsonElement["id"],
+    content: jsonElement["content"],
+    status: stringToElementStatus(jsonElement["status"]),
+    created: DateTime.parse(jsonElement["created"]),
+  );
 
   @override
   toString() {

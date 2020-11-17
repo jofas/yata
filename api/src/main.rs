@@ -38,6 +38,7 @@ use std::convert::TryFrom;
 #[derive(Serialize, Deserialize, Debug)]
 enum ElementStatus { Todo, Done, Deleted }
 
+// TODO: created -> last modified?
 #[derive(Serialize, Deserialize, Debug)]
 struct Element {
   id: String,
@@ -123,9 +124,25 @@ async fn add_todo(
 
 #[put("/{user}/{id}/status")]
 async fn set_status(
-  web::Path((user, id)): web::Path<(String, usize)>,
+  web::Path((user, id)): web::Path<(String, String)>,
+  collection: web::Data<Collection>,
   new_status: web::Json<SingleStatus>) -> impl Responder
 {
+  let id = ObjectId::with_string(&id).unwrap();
+
+  let filter = doc!{
+    "_id": id,
+    "user": user,
+  };
+
+  let update = doc!{
+    "$set": {"status": to_bson(&new_status.status).unwrap()}
+  };
+
+  collection.find_one_and_update(filter, update, None)
+    .await
+    .unwrap();
+
   HttpResponse::Ok().finish()
 }
 
