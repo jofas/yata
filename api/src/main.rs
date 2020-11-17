@@ -33,11 +33,11 @@ use chrono::offset::Utc;
 extern crate partial_application;
 
 use std::sync::Arc;
+use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, Debug)]
 enum ElementStatus { Todo, Done, Deleted }
 
-// TODO: timestamp for ordering
 #[derive(Serialize, Deserialize, Debug)]
 struct Element {
   id: String,
@@ -46,9 +46,24 @@ struct Element {
   created: DateTime<Utc>,
 }
 
-#[derive(Serialize)]
-struct SingleId {
-  id: String
+impl TryFrom<Document> for Element {
+  type Error = &'static str;
+
+  fn try_from(doc: Document) -> Result<Self, Self::Error> {
+    let id = doc.get_object_id("_id").unwrap().to_hex();
+    let content = String::from(doc.get_str("content").unwrap());
+    let status: ElementStatus =
+      from_bson(doc.get("status").unwrap().clone()).unwrap();
+    // TODO: simplify once database is clean again
+    let created = doc.get_datetime("created")
+      .map(|d| *d)
+      .or_else(|_| Ok(Utc::now()) as Result<DateTime<Utc>, bool>)
+      .unwrap();
+
+    Ok(Element{
+      id: id, content: content, status: status, created: created
+    })
+  }
 }
 
 #[derive(Deserialize)]
@@ -72,19 +87,7 @@ async fn get_elements(
   let mut res: Vec<Element> = Vec::new();
 
   while let Some(result) = cursor.next().await {
-    let document = result.unwrap();
-    let id = document.get_object_id("_id").unwrap().to_hex();
-    let content = String::from(document.get_str("content").unwrap());
-    let status: ElementStatus =
-      from_bson(document.get("status").unwrap().clone()).unwrap();
-    let created = document.get_datetime("created")
-      .map(|d| *d)
-      .or_else(|_| Ok(Utc::now()) as Result<DateTime<Utc>, bool>)
-      .unwrap();
-
-    res.push(Element{
-      id: id, content: content, status: status, created: created
-    });
+    res.push(Element::try_from(result.unwrap()).unwrap());
   }
 
   HttpResponse::Ok().json(res)
@@ -106,12 +109,16 @@ async fn add_todo(
   let id = collection.insert_one(insert, None)
     .await
     .unwrap()
-    .inserted_id
-    .as_object_id()
-    .unwrap()
-    .to_hex();
+    .inserted_id;
 
-  HttpResponse::Ok().json(SingleId{id: id})
+  let filter = doc!{"_id": id};
+
+  let inserted_elem = collection.find_one(filter, None)
+    .await
+    .unwrap()
+    .unwrap();
+
+  HttpResponse::Ok().json(Element::try_from(inserted_elem).unwrap())
 }
 
 #[put("/{user}/{id}/status")]

@@ -596,13 +596,7 @@ class ElementsController extends YataController {
     var jsonElements = jsonDecode(jsonString);
 
     for (var jsonElement in jsonElements) {
-      var element = Element(
-        id: jsonElement["id"],
-        content: jsonElement["content"],
-        status: stringToElementStatus(jsonElement["status"]),
-        created: DateTime.parse(jsonElement["created"]),
-      );
-
+      var element = _parseElement(jsonElement);
       _addElement(element);
     }
 
@@ -611,36 +605,65 @@ class ElementsController extends YataController {
     print(_todos.value);
     // TODO: get whole element as return from post to /add_todo
 
-    // TODO: put in three lists
-    //       sort the lists
-    //       change operations
+    // TODO: implement operations
+  }
+
+  // TODO: to named constructor
+  Element _parseElement(Map<String, dynamic> jsonElement) {
+    return Element(
+      id: jsonElement["id"],
+      content: jsonElement["content"],
+      status: stringToElementStatus(jsonElement["status"]),
+      created: DateTime.parse(jsonElement["created"]),
+    );
   }
 
   _addElement(Element element) {
     switch (element.status) {
       case ElementStatus.Todo:
         _todos.value.add(element);
+        _todos.refresh();
         break;
       case ElementStatus.Done:
         _done.value.add(element);
+        _done.refresh();
         break;
       case ElementStatus.Deleted:
         _deleted.value.add(element);
+        _deleted.refresh();
         break;
     }
   }
 
   _sortByCreated() {
     int Function(Element, Element) compare =
-      (a, b) => a.created.compareTo(b.created);
+      (a, b) => -a.created.compareTo(b.created);
 
     _todos.value.sort(compare);
     _done.value.sort(compare);
     _deleted.value.sort(compare);
   }
 
-  addTODO(String value) {
-    return;
+  addTODO(String content) async {
+    var url = "http://localhost:9999/${authController.user}/add_todo";
+    var token = authController.accessToken.toCompactSerialization();
+
+    try {
+      var response = await client.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "content-type": "application/json",
+        },
+        body: json.encode({"content": content}),
+      );
+      var element = _parseElement(jsonDecode(response.body));
+      _addElement(element);
+      _sortByCreated();
+    } catch (e) {
+      print(e.runtimeType);
+      print(e.message);
+    }
   }
 
   setDone(int index) {
@@ -680,24 +703,7 @@ class ElementsController extends YataController {
   }
 
   _post({String path, String body: null}) async {
-    var url = "http://localhost:9999/${authController.user}/$path";
-    var token = authController.accessToken.toCompactSerialization();
 
-    try {
-      var response = await client.post(
-        url,
-        headers: {
-          "Authorization": "Bearer $token",
-          "content-type": "application/json",
-        },
-        body: body,
-      );
-      print("Got Response: ${response.statusCode}");
-      print("${response.body}");
-    } catch (e) {
-      print(e.runtimeType);
-      print(e.message);
-    }
   }
 }
 
