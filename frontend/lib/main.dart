@@ -363,7 +363,7 @@ class YataContentScreen extends StatelessWidget {
                               padding: EdgeInsets.all(16.0),
                               child: Row(
                                 children: <Widget>[
-                                  Expanded(child: Text(items[index])),
+                                  Expanded(child: Text(items[index].content)),
                                   mainButton.generateElevatedButton(index),
                                   secondaryButton.generateTextButton(index),
                                 ],
@@ -557,24 +557,22 @@ class AuthController extends YataController {
 }
 
 class ElementsController extends YataController {
-  final elements = Elements().obs;
+  RxList<Element> _todos = <Element>[].obs;
+  RxList<Element> _done = <Element>[].obs;
+  RxList<Element> _deleted = <Element>[].obs;
+
   final client = http.Client();
 
   final AuthController authController = AuthController.findOrCreate();
 
   ElementsController() : super();
 
-  // TODO: learn introspection and abstract this into YataController
-  //       as well
   factory ElementsController.findOrCreate() {
-    ElementsController controller;
-
     try {
-      controller = Get.find();
+      return Get.find();
     } catch (_) {
-      controller = Get.put(ElementsController());
+      return Get.put(ElementsController());
     }
-    return controller;
   }
 
   load() async {
@@ -588,76 +586,96 @@ class ElementsController extends YataController {
         }
       );
 
-      setElementsFromJsonString(response.body);
+      _setElementsFromJsonString(response.body);
     } finally {
       hasLoaded = true;
     }
   }
 
+  _setElementsFromJsonString(String jsonString) {
+    var jsonElements = jsonDecode(jsonString);
+
+    for (var jsonElement in jsonElements) {
+      var element = Element(
+        id: jsonElement["id"],
+        content: jsonElement["content"],
+        status: stringToElementStatus(jsonElement["status"]),
+        created: DateTime.parse(jsonElement["created"]),
+      );
+
+      _addElement(element);
+    }
+
+    _sortByCreated();
+
+    print(_todos.value);
+    // TODO: send datetime for adding todo as well
+
+    // TODO: put in three lists
+    //       sort the lists
+    //       change operations
+  }
+
+  _addElement(Element element) {
+    switch (element.status) {
+      case ElementStatus.Todo:
+        _todos.value.add(element);
+        break;
+      case ElementStatus.Done:
+        _done.value.add(element);
+        break;
+      case ElementStatus.Deleted:
+        _deleted.value.add(element);
+        break;
+    }
+  }
+
+  _sortByCreated() {
+    int Function(Element, Element) compare = (a, b) => -a.created.compareTo(b.created);
+
+    _todos.value.sort(compare);
+    _done.value.sort(compare);
+    _deleted.value.sort(compare);
+  }
+
   addTODO(String value) {
-    elements.value.addTODO(value);
-    _post(path: "add_todo", body: jsonEncode({"content": value}));
-    elements.refresh();
+    return;
   }
 
   setDone(int index) {
-    elements.value.setDone(index);
-    _post(path: "set_done/$index");
-    elements.refresh();
+    return;
   }
 
   unsetDone(int index) {
-    elements.value.unsetDone(index);
-    _post(path: "unset_done/$index");
-    elements.refresh();
+    return;
   }
 
   unsetDeleted(int index) {
-    elements.value.unsetDeleted(index);
-    _post(path: "unset_deleted/$index");
-    elements.refresh();
+    return;
   }
 
   setTODODeleted(int index) {
-    elements.value.setTODODeleted(index);
-    _post(path: "set_todo_deleted/$index");
-    elements.refresh();
+    return;
   }
 
   setDoneDeleted(int index) {
-    elements.value.setDoneDeleted(index);
-    _post(path: "set_done_deleted/$index");
-    elements.refresh();
+    return;
   }
 
   deleteCompletely(int index) {
-    elements.value.deleteCompletely(index);
-    _post(path: "delete_completely/$index");
-    elements.refresh();
+    return;
   }
 
   deleteAllCompletely() {
-    elements.value.deleteAllCompletely();
-    _post(path: "delete_completely");
-    elements.refresh();
+    return;
   }
 
-  getList(ElementsList list) => elements.value.getList(list);
-
-  setElementsFromJsonString(String jsonString) {
-    var jsonElements = jsonDecode(jsonString);
-
-    print(jsonElements);
-    for (var element in jsonElements) {
-      print(element);
+  getList(ElementsList list) {
+    switch (list) {
+      case ElementsList.todos: return UnmodifiableListView(_todos.value);
+      case ElementsList.done: return UnmodifiableListView(_done.value);
+      case ElementsList.deleted: return UnmodifiableListView(_deleted.value);
     }
-    /*
-    elements.value.todos = List<String>.from(jsonElements["todos"]);
-    elements.value.done = List<String>.from(jsonElements["done"]);
-    elements.value.deleted = List<String>.from(jsonElements["deleted"]);
-
-    elements.refresh();
-    */
   }
 
   _post({String path, String body: null}) async {
@@ -697,25 +715,30 @@ enum ElementsList { todos, done, deleted }
 
 enum ElementStatus { Todo, Done, Deleted }
 
+ElementStatus stringToElementStatus(String str) =>
+  ElementStatus.values.firstWhere(
+    (e) => e.toString().split(".")[1] == str);
+
 class Element {
   String id;
   String content;
   ElementStatus status;
   DateTime created;
+
+  Element({this.id, this.content, this.status, this.created});
+
+  @override
+  toString() {
+    return "Element{id: $id, content: $content, status: $status, " +
+      "created: $created}";
+  }
 }
 
+/*
 class Elements {
   List<String> todos = [];
   List<String> done = [];
   List<String> deleted = [];
-
-  getList(ElementsList list) {
-    switch (list) {
-      case ElementsList.todos: return UnmodifiableListView(todos);
-      case ElementsList.done: return UnmodifiableListView(done);
-      case ElementsList.deleted: return UnmodifiableListView(deleted);
-    }
-  }
 
   addTODO(String value) {
     todos.insert(0, value);
@@ -740,6 +763,7 @@ class Elements {
     src.removeAt(index);
   }
 }
+*/
 
 class YataButtonTemplate {
   final Widget child;
