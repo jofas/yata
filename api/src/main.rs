@@ -160,9 +160,16 @@ async fn delete_element(
 
 #[post("/{user}/empty_bin")]
 async fn empty_bin(
-  web::Path((user,)): web::Path<(String,)>) -> impl Responder
+  web::Path((user,)): web::Path<(String,)>,
+  collection: web::Data<Collection>) -> impl Responder
 {
-  println!("deleting all completely");
+  let filter = doc!{
+    "user": user,
+    "status": to_bson(&ElementStatus::Deleted).unwrap(),
+  };
+
+  collection.delete_many(filter, None).await.unwrap();
+
   HttpResponse::Ok().finish()
 }
 

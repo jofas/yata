@@ -727,9 +727,26 @@ class ElementsController extends YataController {
     _deleted.refresh();
   }
 
-  /* post /{user}/empty_bin */
-  deleteAllCompletely() {
-    return;
+  deleteAllCompletely() async {
+    var url = "http://localhost:9999/${authController.user}/empty_bin";
+    var token = authController.accessToken.toCompactSerialization();
+
+    try {
+      var response = await client.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "content-type": "application/json",
+        },
+      );
+
+      print(response.statusCode);
+    } catch (e) {
+      print(e.message);
+    }
+
+    _deleted.value = <Element>[];
+    _deleted.refresh();
   }
 
   getList(ElementsList list) {
