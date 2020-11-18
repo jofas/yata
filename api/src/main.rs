@@ -56,11 +56,7 @@ impl TryFrom<Document> for Element {
     let content = String::from(doc.get_str("content").unwrap());
     let status: ElementStatus =
       from_bson(doc.get("status").unwrap().clone()).unwrap();
-    // TODO: simplify once database is clean again
-    let created = doc.get_datetime("created")
-      .map(|d| *d)
-      .or_else(|_| Ok(Utc::now()) as Result<DateTime<Utc>, bool>)
-      .unwrap();
+    let created = *doc.get_datetime("created").unwrap();
 
     Ok(Element{
       id: id, content: content, status: status, created: created
