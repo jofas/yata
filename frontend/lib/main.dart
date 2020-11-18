@@ -336,12 +336,12 @@ class YataContentScreen extends StatelessWidget {
                 child: Column(
                   children: <Widget>[
                     Text(
-                      authController.user,
+                      authController.name,
                       style: Theme.of(context).textTheme.headline4,
                     ),
                     ListTile(
                       leading: const Icon(Icons.person),
-                      title: Text(authController.name),
+                      title: Text(authController.user),
                     ),
                     ListTile(
                       leading: const Icon(Icons.email),
