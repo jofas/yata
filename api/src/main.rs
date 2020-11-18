@@ -51,6 +51,7 @@ impl TryFrom<Document> for Element {
   type Error = &'static str;
 
   fn try_from(doc: Document) -> Result<Self, Self::Error> {
+    // TODO: timestamp in id -> no extra field created necessary
     let id = doc.get_object_id("_id").unwrap().to_hex();
     let content = String::from(doc.get_str("content").unwrap());
     let status: ElementStatus =
@@ -139,17 +140,25 @@ async fn set_status(
     "$set": {"status": to_bson(&new_status.status).unwrap()}
   };
 
-  collection.find_one_and_update(filter, update, None)
-    .await
-    .unwrap();
+  collection.update_one(filter, update, None).await.unwrap();
 
   HttpResponse::Ok().finish()
 }
 
 #[delete("/{user}/{id}")]
 async fn delete_element(
-  web::Path((user, id)): web::Path<(String, usize)>) -> impl Responder
+  web::Path((user, id)): web::Path<(String, String)>,
+  collection: web::Data<Collection>) -> impl Responder
 {
+  let id = ObjectId::with_string(&id).unwrap();
+
+  let filter = doc!{
+    "_id": id,
+    "user": user,
+  };
+
+  collection.delete_one(filter, None).await.unwrap();
+
   HttpResponse::Ok().finish()
 }
 

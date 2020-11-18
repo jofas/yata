@@ -704,9 +704,27 @@ class ElementsController extends YataController {
     _sortByCreated();
   }
 
-  /* delete /{user}/{id} */
-  deleteCompletely(int index) {
-    return;
+  deleteCompletely(int index) async {
+    var elementId = _deleted[index].id;
+    var url = "http://localhost:9999/${authController.user}/$elementId";
+    var token = authController.accessToken.toCompactSerialization();
+
+    try {
+      var response = await client.delete(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "content-type": "application/json",
+        },
+      );
+
+      print(response.statusCode);
+    } catch (e) {
+      print(e.message);
+    }
+
+    _deleted.value.removeAt(index);
+    _deleted.refresh();
   }
 
   /* post /{user}/empty_bin */
@@ -720,10 +738,6 @@ class ElementsController extends YataController {
       case ElementsList.done: return UnmodifiableListView(_done.value);
       case ElementsList.deleted: return UnmodifiableListView(_deleted.value);
     }
-  }
-
-  _post({String path, String body: null}) async {
-
   }
 }
 
