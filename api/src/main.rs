@@ -2,7 +2,6 @@ use actix_web::{get, post, put, delete, web, App, HttpResponse,
   HttpServer, Responder};
 use actix_web::Error as ActixError;
 use actix_web::dev::ServiceRequest;
-use actix_web::dev::Service;
 
 use actix_web_httpauth::middleware::HttpAuthentication;
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -24,7 +23,6 @@ use mongodb::bson::{to_bson, from_bson};
 use mongodb::bson::oid::ObjectId;
 
 use futures::stream::StreamExt;
-use futures::future::FutureExt;
 
 use chrono::DateTime;
 use chrono::offset::Utc;
@@ -178,26 +176,25 @@ async fn auth(
   bearer: BearerAuth,
   key_set:Arc<KeyStore>) -> Result<ServiceRequest, ActixError>
 {
-  println!("hello from auth");
   match key_set.verify(bearer.token()) {
     Ok(jwt) => {
-      // TODO: make sure user can access path
+      let username = jwt.payload().get_str("preferred_username").unwrap();
+      let path_root = req.path().split("/").nth(1).unwrap();
 
-      //println!("{:?}", jwt.payload());
-      println!("{} {}", jwt.payload().get_str("preferred_username").unwrap(),
-        req.path());
-      Ok(req)
-    }
+      if username == path_root {
+        return Ok(req);
+      }
+    },
     Err(JWTError { msg, typ: _ }) => {
-      println!("Could not verify token. Reason: {}", msg);
-
-      let config = req.app_data::<BearerConfig>()
-        .map(|data| data.clone())
-        .unwrap_or_else(Default::default);
-
-      Err(AuthenticationError::from(config).into())
+      eprintln!("Could not verify token. Reason: {}", msg);
     }
   }
+
+  let config = req.app_data::<BearerConfig>()
+    .map(|data| data.clone())
+    .unwrap_or_else(Default::default);
+
+  Err(AuthenticationError::from(config).into())
 }
 
 async fn init_database() -> MDBResult<Collection> {
@@ -212,40 +209,6 @@ async fn main() -> std::io::Result<()> {
   println!("STARTING YATA_API SERVER");
 
   let collection = init_database().await.unwrap();
-
-  /*
-  // save the todos as {"value": "...", "state": "{todo|done|deleted}"}
-  // and have a collection for each user
-
-  let collection = db.collection("yata_collection");
-
-  let elems = doc! {
-    "user": "test",
-    "todos": [{"value": "todo1", "index": 0}, {"value": "todo2", "index": 1}],
-    "done": [],
-    "deleted": [],
-  };
-
-  let find = doc!{"user": "test"};
-
-  let rem_from_todo = doc!{"$pull": {"todos": {"index": 0}}};
-  // find_one_and_delete, find_one_and_update
-
-  if let None = collection.find_one_and_replace(find.clone(), elems.clone(), None).await.unwrap() {
-    println!("Adding Elems for first time");
-    collection.insert_one(elems.clone(), None).await.unwrap();
-  } else {
-    println!("Modified existing Elems");
-  }
-
-  let res = collection.find_one_and_update(find.clone(), rem_from_todo, None).await.unwrap();
-  println!("{:?}", res);
-  //let res = collection.find_one_and_update(find, rem_from_todo, None).await.unwrap();
-  //println!("{:?}", res);
-  //collection.find_one_and_update(find, , None).await.unwrap();
-
-  panic!();
-  */
 
   let url = "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs";
   let key_set = Arc::new(KeyStore::new_from(url).await.unwrap());
