@@ -52,7 +52,7 @@ class YataBaseScreen extends StatelessWidget {
         return LoadingScreen();
 
       if (!authController.isAuthenticated)
-        return LoginScreen();
+        return LoginScreen(); // TODO: toNamed and all
 
       if (!elementsController.hasLoaded) {
         elementsController.load();
@@ -297,6 +297,7 @@ class YataDeleteScreen extends StatelessWidget {
 
 class YataContentScreen extends StatelessWidget {
   final ElementsController controller = ElementsController.findOrCreate();
+  final AuthController authController = AuthController.findOrCreate();
 
   final _scrollController = ScrollController();
 
@@ -324,6 +325,43 @@ class YataContentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Yata"),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Get.bottomSheet(
+              Container(
+                color: Colors.white,
+                height: 200.0,
+                child: Column(
+                  children: <Widget>[
+                    Text(
+                      authController.user,
+                      style: Theme.of(context).textTheme.headline4,
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(authController.name),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.email),
+                      title: Text(authController.email),
+                    ),
+                    FlatButton(
+                      onPressed: () {
+                        Get.back();
+                        authController.logout();
+                      },
+                      child: const Text("logout"),
+                    )
+                  ],
+                ),
+              ),
+            ),
+            child: const Icon(Icons.person, color: Colors.white),
+          ),
+        ],
+      ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
@@ -465,6 +503,8 @@ class AuthController extends YataController {
   get accessToken => _accessToken;
 
   get user => _accessToken.claims["preferred_username"];
+  get email => _accessToken.claims["email"];
+  get name => _accessToken.claims["name"];
 
   get isAuthenticated => _isAuthenticated.value;
 
@@ -492,6 +532,17 @@ class AuthController extends YataController {
     );
 
     _setAuthenticationAndCyclicallyRefreshToken(response);
+  }
+
+  logout() async {
+    print(_accessToken.claims);
+    _accessToken = null;
+    _refreshToken = null;
+
+    var ls = await LocalStorage.getInstance();
+    ls.remove("refresh_token");
+
+    isAuthenticated = false;
   }
 
   Future<void> _cyclicallyRefreshToken() async {
@@ -769,8 +820,10 @@ class YataController extends GetxController {
   }
 }
 
+// TODO: match ElementStatus instead of list
 enum ElementsList { todos, done, deleted }
 
+// TODO: static class as wrapper with the methods
 enum ElementStatus { Todo, Done, Deleted }
 
 ElementStatus stringToElementStatus(String str) =>
@@ -801,37 +854,6 @@ class Element {
       "created: $created}";
   }
 }
-
-/*
-class Elements {
-  List<String> todos = [];
-  List<String> done = [];
-  List<String> deleted = [];
-
-  addTODO(String value) {
-    todos.insert(0, value);
-  }
-
-  setDone(int index) => _move(todos, done, index);
-  unsetDone(int index) => _move(done, todos, index);
-  unsetDeleted(int index) => _move(deleted, todos, index);
-  setTODODeleted(int index) => _move(todos, deleted, index);
-  setDoneDeleted(int index) => _move(done, deleted, index);
-
-  deleteCompletely(int index) {
-    deleted.removeAt(index);
-  }
-
-  deleteAllCompletely() {
-    deleted = [];
-  }
-
-  _move(src, dest, int index) {
-    dest.insert(0, src[index]);
-    src.removeAt(index);
-  }
-}
-*/
 
 class YataButtonTemplate {
   final Widget child;

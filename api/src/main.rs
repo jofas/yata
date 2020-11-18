@@ -46,6 +46,7 @@ struct Element {
 }
 
 impl TryFrom<Document> for Element {
+  // TODO: error enum type
   type Error = &'static str;
 
   fn try_from(doc: Document) -> Result<Self, Self::Error> {
