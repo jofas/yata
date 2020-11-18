@@ -347,7 +347,7 @@ class YataContentScreen extends StatelessWidget {
                       leading: const Icon(Icons.email),
                       title: Text(authController.email),
                     ),
-                    FlatButton(
+                    ElevatedButton(
                       onPressed: () {
                         Get.back();
                         authController.logout();
@@ -384,30 +384,13 @@ class YataContentScreen extends StatelessWidget {
                     controller: _scrollController,
                     itemCount: len,
                     itemBuilder: (BuildContext context, int index) {
-                      // TODO: from Container to Card
-                      return Container(
-                        child: Padding(
-                          padding: EdgeInsets.all(10.0),
-                          child: Container(
-                            decoration: ShapeDecoration(
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(),
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(20)
-                                ),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Row(
-                                children: <Widget>[
-                                  Expanded(child: Text(items[index].content)),
-                                  mainButton.generateElevatedButton(index),
-                                  secondaryButton.generateTextButton(index),
-                                ],
-                              ),
-                            ),
-                          ),
+                      return Card(
+                        child: MaterialBanner(
+                          content: Text(items[index].content),
+                          actions: <Widget>[
+                              mainButton.generateElevatedButton(index),
+                              secondaryButton.generateTextButton(index),
+                          ],
                         ),
                       );
                     },
@@ -535,7 +518,6 @@ class AuthController extends YataController {
   }
 
   logout() async {
-    print(_accessToken.claims);
     _accessToken = null;
     _refreshToken = null;
 
