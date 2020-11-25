@@ -90,46 +90,56 @@ class LoginScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Container(
-          constraints: BoxConstraints(maxWidth:300, maxHeight:300),
+          constraints: BoxConstraints(
+            maxWidth:300,
+            maxHeight:250,
+          ),
           child: Card(
-            child: Column(
-              children: <Widget>[
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: TextField(
-                    controller: usernameController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: "Username or E-Mail Address",
-                      //errorText: "LOLZ",
+            child: Padding(
+              padding: EdgeInsets.all(10.0),
+              child:
+                Column(
+                children: <Widget>[
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: usernameController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: "Username or E-Mail Address",
+                        errorText: null,
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: "Password",
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: "Password",
+                      ),
                     ),
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    // TODO: check input
-                    await controller.login(
-                      usernameController.text,
-                      passwordController.text,
-                    );
-                    // TODO: authController should
-                    // have observable enum whether
-                    // request was successful or not
-                  },
-                  child: Text("Login"),
-                ),
-              ],
+                  Flexible(
+                    flex: 1,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // TODO: check input
+                        await controller.login(
+                          usernameController.text,
+                          passwordController.text,
+                        );
+                        // TODO: authController should
+                        // have observable enum whether
+                        // request was successful or not
+                      },
+                      child: Text("Login"),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
