@@ -80,71 +80,97 @@ class LoginScreen extends StatelessWidget {
   final AuthController controller = AuthController.findOrCreate();
 
   // TODO: build own form with Getx and all
-  final _formKey = GlobalKey<FormState>();
+
+  final focusNode = FocusNode();
 
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+  /*
+  @override
+  void dispose() {
+    focusNode.dispose();
+    usernameController.dispose();
+    passwordController.dispose();
+  }
+  */
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth:300,
-            maxHeight:250,
-          ),
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(10.0),
-              child:
-                Column(
-                children: <Widget>[
-                  Expanded(
-                    flex: 2,
-                    child: TextField(
-                      controller: usernameController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: "Username or E-Mail Address",
-                        errorText: null,
+      body: RawKeyboardListener(
+        focusNode: focusNode,
+        autofocus: true,
+        onKey: (RawKeyEvent event) {
+          if (event.logicalKey == LogicalKeyboardKey.enter &&
+              event.runtimeType == RawKeyDownEvent)
+            submit();
+        },
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth:300,
+              maxHeight:250,
+            ),
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(10.0),
+                child:
+                  Column(
+                  children: <Widget>[
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: usernameController,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: "Username or E-Mail Address",
+                          errorText: null,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: "Password",
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: "Password",
+                        ),
                       ),
                     ),
-                  ),
-                  Flexible(
-                    flex: 1,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // TODO: check input
-                        await controller.login(
-                          usernameController.text,
-                          passwordController.text,
-                        );
-                        // TODO: authController should
-                        // have observable enum whether
-                        // request was successful or not
-                      },
-                      child: Text("Login"),
+                    Flexible(
+                      flex: 1,
+                      child: ElevatedButton(
+                        onPressed: submit,
+                        child: Text("Login"),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  submit() async {
+    if (usernameController.text.length == 0 ||
+        passwordController.text.length == 0)
+    {
+      print("NONONONOHO!");
+      return;
+    }
+    // TODO: check input
+    await controller.login(
+      usernameController.text.trim(),
+      passwordController.text,
+    );
+    // TODO: authController should
+    // have observable enum whether
+    // request was successful or not
   }
 }
 
