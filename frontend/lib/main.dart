@@ -357,13 +357,20 @@ class YataContentScreen extends StatelessWidget {
 class LoginScreen extends StatelessWidget {
   final AuthController controller = AuthController.findOrCreate();
 
-  final RxBool displayErrorMessage = false.obs;
+  Rx<AuthExceptionCause> _exception = Rx<AuthExceptionCause>(null);
 
   final focusNode = FocusNode();
   final passwordFieldFocusNode = FocusNode();
 
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+
+  AuthExceptionCause get exception => _exception.value;
+
+  set exception(AuthExceptionCause cause) {
+    _exception.value = cause;
+    _exception.refresh();
+  }
 
   @override
   void dispose() {
@@ -392,25 +399,44 @@ class LoginScreen extends StatelessWidget {
             child: Column(
               children: <Widget>[
                 Obx(() {
-                  if (displayErrorMessage.value) {
-                    return Card(
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
-                      ),
-                      color: Color(0xFFFFE3E6),
-                      child: ListTile(
-                        title: Text("Incorrect username or password."),
-                        trailing: TextButton(
-                          onPressed: () => displayErrorMessage.value = false,
-                          child: Icon(
-                            Icons.clear,
-                            color: Color.fromARGB(154, 158, 28, 35),
+                  switch (exception) {
+                    case AuthExceptionCause.unauthorized:
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
+                        ),
+                        color: Color(0xFFFFE3E6),
+                        child: ListTile(
+                          title: Text("Incorrect username or password."),
+                          trailing: TextButton(
+                            onPressed: () => exception = null,
+                            child: Icon(
+                              Icons.clear,
+                              color: Color.fromARGB(154, 158, 28, 35),
+                            ),
                           ),
                         ),
-                      ),
-                    );
+                      );
+                    case AuthExceptionCause.networkError:
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
+                        ),
+                        color: Color(0xFFFFE3E6),
+                        child: ListTile(
+                          title: Text("Oops, something went wrong with the connection. Please try again."),
+                          trailing: TextButton(
+                            onPressed: () => exception = null,
+                            child: Icon(
+                              Icons.clear,
+                              color: Color.fromARGB(154, 158, 28, 35),
+                            ),
+                          ),
+                        ),
+                      );
+                    default:
+                      return Container();
                   }
-                  return Container();
                 }),
                 Container(
                   constraints: BoxConstraints(
@@ -469,17 +495,18 @@ class LoginScreen extends StatelessWidget {
     if (usernameController.text.length == 0 ||
         passwordController.text.length == 0)
     {
-      displayErrorMessage.value = true;
+      exception = AuthExceptionCause.unauthorized;
       return;
     }
 
-    await controller.login(
-      usernameController.text.trim(),
-      passwordController.text,
-    );
-    // TODO: authController should
-    // have observable enum whether
-    // request was successful or not
+    try {
+      await controller.login(
+        usernameController.text.trim(),
+        passwordController.text,
+      );
+    } catch (e) {
+      exception = e.cause;
+    }
   }
 }
 
@@ -564,18 +591,22 @@ class AuthController extends YataController {
   ).toInt();
 
   login(String username, String password) async {
-    print("$username $password");
+    http.Response response = null;
+    try {
+      response = await _client.post("$KEYCLOAK_BASE/token",
+        body: {
+          "username": username,
+          "password": password,
+          "client_id": "yata_frontend",
+          "grant_type": "password",
+        }
+      );
+    } catch (e) {
+      throw AuthException.networkError();
+    }
 
-    // TODO: catch connection errors
-    //       clean username from trailing whitespaces
-    var response = await _client.post("$KEYCLOAK_BASE/token",
-      body: {
-        "username": username,
-        "password": password,
-        "client_id": "yata_frontend",
-        "grant_type": "password",
-      }
-    );
+    if (response.statusCode == 401)
+      throw AuthException.unauthorized();
 
     _setAuthenticationAndCyclicallyRefreshToken(response);
   }
@@ -863,6 +894,21 @@ class YataController extends GetxController {
     _hasLoaded.value = newHasLoaded;
     _hasLoaded.refresh();
   }
+}
+
+enum AuthExceptionCause { unauthorized, networkError }
+
+class AuthException {
+  AuthExceptionCause cause;
+  String message;
+
+  AuthException.unauthorized() :
+    this.cause = AuthExceptionCause.unauthorized,
+    this.message = "Auth server has returned a 401 status code";
+
+  AuthException.networkError() :
+    this.cause = AuthExceptionCause.networkError,
+    this.message = "Auth server unreachable";
 }
 
 // TODO: match ElementStatus instead of list
