@@ -556,10 +556,8 @@ class AuthController extends YataController {
 
   get isAuthenticated => _isAuthenticated.value;
 
-  set isAuthenticated(bool newIsAuthenticated) {
+  set isAuthenticated(bool newIsAuthenticated) =>
     _isAuthenticated.value = newIsAuthenticated;
-    _isAuthenticated.refresh();
-  }
 
   int get accessTokenExpiresIn => (
     (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
