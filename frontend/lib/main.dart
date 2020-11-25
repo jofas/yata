@@ -283,8 +283,10 @@ class AlertDialogContentContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = Get.width > 600.0 ? 600.0 : Get.width;
-    return Container(child: child, width: width);
+    return Container(
+      constraints: BoxConstraints(maxWidth: 600),
+      child: child
+    );
   }
 }
 
