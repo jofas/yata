@@ -65,17 +65,6 @@ class YataBaseScreen extends StatelessWidget {
   }
 }
 
-class LoadingScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-  }
-}
-
 class YataDeleteScreen extends StatelessWidget {
   final ElementsController controller = ElementsController.findOrCreate();
 
@@ -135,6 +124,95 @@ class YataDeleteScreen extends StatelessWidget {
             child: const Text("DELETE"),
           )
         ],
+      ),
+    );
+  }
+}
+
+class YataTODOScreen extends StatelessWidget {
+  final ElementsController controller = ElementsController.findOrCreate();
+
+  @override
+  Widget build(BuildContext context) {
+    return YataContentScreen(
+      title: "TODOs:",
+      defaultText: "Great! Nothing TODO!",
+      elementsList: ElementsList.todos,
+      mainButton: YataButtonTemplate(
+        action: (int index) => controller.setDone(index),
+        child: const Icon(Icons.check),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (int index) => controller.setTODODeleted(index),
+        child: const Icon(Icons.clear),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Get.dialog(dialogForAddingTODO()),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  dialogForAddingTODO() {
+    var textController = TextEditingController();
+    var focusNode = FocusNode();
+
+    var addTODO = () {
+      if (textController.text.length > 0) {
+        controller.addTODO(textController.text);
+        Get.back();
+      } else {
+        focusNode.requestFocus();
+      }
+    };
+
+    return AlertDialog(
+      content: AlertDialogContentContainer(
+        child: TextField(
+          autofocus: true,
+          focusNode: focusNode,
+          controller: textController,
+          onSubmitted: (_) => addTODO(),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: "Enter a TODO item",
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            textController.dispose();
+            focusNode.dispose();
+            Get.back();
+          },
+          child: const Text("CANCEL"),
+        ),
+        ElevatedButton(
+          onPressed: () => addTODO(),
+          child: const Text("ADD TODO"),
+        )
+      ],
+    );
+  }
+}
+
+class YataDoneScreen extends StatelessWidget {
+  final ElementsController controller = ElementsController.findOrCreate();
+
+  @override
+  Widget build(BuildContext context) {
+    return YataContentScreen(
+      title: "Done:",
+      defaultText: "Oh! You haven't done anything yet!",
+      elementsList: ElementsList.done,
+      mainButton: YataButtonTemplate(
+        action: (int index) => controller.setDoneDeleted(index),
+        child: const Icon(Icons.clear),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (int index) => controller.unsetDone(index),
+        child: const Icon(Icons.restore),
       ),
     );
   }
@@ -276,20 +354,6 @@ class YataContentScreen extends StatelessWidget {
   }
 }
 
-class AlertDialogContentContainer extends StatelessWidget {
-  final Widget child;
-
-  AlertDialogContentContainer({this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(maxWidth: 600),
-      child: child
-    );
-  }
-}
-
 class LoginScreen extends StatelessWidget {
   final AuthController controller = AuthController.findOrCreate();
 
@@ -419,91 +483,27 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-class YataTODOScreen extends StatelessWidget {
-  final ElementsController controller = ElementsController.findOrCreate();
-
+class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return YataContentScreen(
-      title: "TODOs:",
-      defaultText: "Great! Nothing TODO!",
-      elementsList: ElementsList.todos,
-      mainButton: YataButtonTemplate(
-        action: (int index) => controller.setDone(index),
-        child: const Icon(Icons.check),
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
       ),
-      secondaryButton: YataButtonTemplate(
-        action: (int index) => controller.setTODODeleted(index),
-        child: const Icon(Icons.clear),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Get.dialog(dialogForAddingTODO()),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  dialogForAddingTODO() {
-    var textController = TextEditingController();
-    var focusNode = FocusNode();
-
-    var addTODO = () {
-      if (textController.text.length > 0) {
-        controller.addTODO(textController.text);
-        Get.back();
-      } else {
-        focusNode.requestFocus();
-      }
-    };
-
-    return AlertDialog(
-      content: AlertDialogContentContainer(
-        child: TextField(
-          autofocus: true,
-          focusNode: focusNode,
-          controller: textController,
-          onSubmitted: (_) => addTODO(),
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: "Enter a TODO item",
-          ),
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () {
-            textController.dispose();
-            focusNode.dispose();
-            Get.back();
-          },
-          child: const Text("CANCEL"),
-        ),
-        ElevatedButton(
-          onPressed: () => addTODO(),
-          child: const Text("ADD TODO"),
-        )
-      ],
     );
   }
 }
 
-class YataDoneScreen extends StatelessWidget {
-  final ElementsController controller = ElementsController.findOrCreate();
+class AlertDialogContentContainer extends StatelessWidget {
+  final Widget child;
+
+  AlertDialogContentContainer({this.child});
 
   @override
   Widget build(BuildContext context) {
-    return YataContentScreen(
-      title: "Done:",
-      defaultText: "Oh! You haven't done anything yet!",
-      elementsList: ElementsList.done,
-      mainButton: YataButtonTemplate(
-        action: (int index) => controller.setDoneDeleted(index),
-        child: const Icon(Icons.clear),
-      ),
-      secondaryButton: YataButtonTemplate(
-        action: (int index) => controller.unsetDone(index),
-        child: const Icon(Icons.restore),
-      ),
+    return Container(
+      constraints: BoxConstraints(maxWidth: 600),
+      child: child
     );
   }
 }
