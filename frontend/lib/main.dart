@@ -76,193 +76,6 @@ class LoadingScreen extends StatelessWidget {
   }
 }
 
-class LoginScreen extends StatelessWidget {
-  final AuthController controller = AuthController.findOrCreate();
-
-  // TODO: build own form with Getx and all
-
-  final focusNode = FocusNode();
-
-  final usernameController = TextEditingController();
-  final passwordController = TextEditingController();
-  /*
-  @override
-  void dispose() {
-    focusNode.dispose();
-    usernameController.dispose();
-    passwordController.dispose();
-  }
-  */
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: RawKeyboardListener(
-        focusNode: focusNode,
-        autofocus: true,
-        onKey: (RawKeyEvent event) {
-          if (event.logicalKey == LogicalKeyboardKey.enter &&
-              event.runtimeType == RawKeyDownEvent)
-            submit();
-        },
-        child: Center(
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth:300,
-              maxHeight:250,
-            ),
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(10.0),
-                child:
-                  Column(
-                  children: <Widget>[
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: usernameController,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: "Username or E-Mail Address",
-                          errorText: null,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: "Password",
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      flex: 1,
-                      child: ElevatedButton(
-                        onPressed: submit,
-                        child: Text("Login"),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  submit() async {
-    if (usernameController.text.length == 0 ||
-        passwordController.text.length == 0)
-    {
-      print("NONONONOHO!");
-      return;
-    }
-    // TODO: check input
-    await controller.login(
-      usernameController.text.trim(),
-      passwordController.text,
-    );
-    // TODO: authController should
-    // have observable enum whether
-    // request was successful or not
-  }
-}
-
-class YataTODOScreen extends StatelessWidget {
-  final ElementsController controller = ElementsController.findOrCreate();
-
-  @override
-  Widget build(BuildContext context) {
-    return YataContentScreen(
-      title: "TODOs:",
-      defaultText: "Great! Nothing TODO!",
-      elementsList: ElementsList.todos,
-      mainButton: YataButtonTemplate(
-        action: (int index) => controller.setDone(index),
-        child: const Icon(Icons.check),
-      ),
-      secondaryButton: YataButtonTemplate(
-        action: (int index) => controller.setTODODeleted(index),
-        child: const Icon(Icons.clear),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Get.dialog(dialogForAddingTODO()),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  dialogForAddingTODO() {
-    var textController = TextEditingController();
-    var focusNode = FocusNode();
-
-    var addTODO = () {
-      if (textController.text.length > 0) {
-        controller.addTODO(textController.text);
-        Get.back();
-      } else {
-        focusNode.requestFocus();
-      }
-    };
-
-    return AlertDialog(
-      content: AlertDialogContentContainer(
-        child: TextField(
-          autofocus: true,
-          focusNode: focusNode,
-          controller: textController,
-          onSubmitted: (_) => addTODO(),
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: "Enter a TODO item",
-          ),
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () {
-            textController.dispose();
-            focusNode.dispose();
-            Get.back();
-          },
-          child: const Text("CANCEL"),
-        ),
-        ElevatedButton(
-          onPressed: () => addTODO(),
-          child: const Text("ADD TODO"),
-        )
-      ],
-    );
-  }
-}
-
-class YataDoneScreen extends StatelessWidget {
-  final ElementsController controller = ElementsController.findOrCreate();
-
-  @override
-  Widget build(BuildContext context) {
-    return YataContentScreen(
-      title: "Done:",
-      defaultText: "Oh! You haven't done anything yet!",
-      elementsList: ElementsList.done,
-      mainButton: YataButtonTemplate(
-        action: (int index) => controller.setDoneDeleted(index),
-        child: const Icon(Icons.clear),
-      ),
-      secondaryButton: YataButtonTemplate(
-        action: (int index) => controller.unsetDone(index),
-        child: const Icon(Icons.restore),
-      ),
-    );
-  }
-}
-
 class YataDeleteScreen extends StatelessWidget {
   final ElementsController controller = ElementsController.findOrCreate();
 
@@ -472,6 +285,224 @@ class AlertDialogContentContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = Get.width > 600.0 ? 600.0 : Get.width;
     return Container(child: child, width: width);
+  }
+}
+
+class LoginScreen extends StatelessWidget {
+  final AuthController controller = AuthController.findOrCreate();
+
+  final RxBool displayErrorMessage = false.obs;
+
+  final focusNode = FocusNode();
+  final passwordFieldFocusNode = FocusNode();
+
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    focusNode.dispose();
+    usernameController.dispose();
+    passwordController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: RawKeyboardListener(
+        focusNode: focusNode,
+        autofocus: true,
+        onKey: (RawKeyEvent event) {
+          if (focusNode.hasPrimaryFocus &&
+              event.logicalKey == LogicalKeyboardKey.enter &&
+              event.runtimeType == RawKeyUpEvent)
+            submit();
+        },
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: 400
+            ),
+            child: Column(
+              children: <Widget>[
+                Obx(() {
+                  if (displayErrorMessage.value) {
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
+                      ),
+                      color: Color(0xFFFFE3E6),
+                      child: ListTile(
+                        title: Text("Incorrect username or password."),
+                        trailing: TextButton(
+                          onPressed: () => displayErrorMessage.value = false,
+                          child: Icon(
+                            Icons.clear,
+                            color: Color.fromARGB(154, 158, 28, 35),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return Container();
+                }),
+                Container(
+                  constraints: BoxConstraints(
+                    maxHeight:250,
+                  ),
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Column(
+                        children: <Widget>[
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              controller: usernameController,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "Username or E-Mail Address",
+                              ),
+                              onSubmitted: (_) => passwordFieldFocusNode.requestFocus(),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              focusNode: passwordFieldFocusNode,
+                              controller: passwordController,
+                              obscureText: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "Password",
+                              ),
+                              onSubmitted: (_) => submit(),
+                            ),
+                          ),
+                          Flexible(
+                            flex: 1,
+                            child: ElevatedButton(
+                              onPressed: submit,
+                              child: Text("Login"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  submit() async {
+    if (usernameController.text.length == 0 ||
+        passwordController.text.length == 0)
+    {
+      displayErrorMessage.value = true;
+      return;
+    }
+
+    await controller.login(
+      usernameController.text.trim(),
+      passwordController.text,
+    );
+    // TODO: authController should
+    // have observable enum whether
+    // request was successful or not
+  }
+}
+
+class YataTODOScreen extends StatelessWidget {
+  final ElementsController controller = ElementsController.findOrCreate();
+
+  @override
+  Widget build(BuildContext context) {
+    return YataContentScreen(
+      title: "TODOs:",
+      defaultText: "Great! Nothing TODO!",
+      elementsList: ElementsList.todos,
+      mainButton: YataButtonTemplate(
+        action: (int index) => controller.setDone(index),
+        child: const Icon(Icons.check),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (int index) => controller.setTODODeleted(index),
+        child: const Icon(Icons.clear),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Get.dialog(dialogForAddingTODO()),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  dialogForAddingTODO() {
+    var textController = TextEditingController();
+    var focusNode = FocusNode();
+
+    var addTODO = () {
+      if (textController.text.length > 0) {
+        controller.addTODO(textController.text);
+        Get.back();
+      } else {
+        focusNode.requestFocus();
+      }
+    };
+
+    return AlertDialog(
+      content: AlertDialogContentContainer(
+        child: TextField(
+          autofocus: true,
+          focusNode: focusNode,
+          controller: textController,
+          onSubmitted: (_) => addTODO(),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: "Enter a TODO item",
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            textController.dispose();
+            focusNode.dispose();
+            Get.back();
+          },
+          child: const Text("CANCEL"),
+        ),
+        ElevatedButton(
+          onPressed: () => addTODO(),
+          child: const Text("ADD TODO"),
+        )
+      ],
+    );
+  }
+}
+
+class YataDoneScreen extends StatelessWidget {
+  final ElementsController controller = ElementsController.findOrCreate();
+
+  @override
+  Widget build(BuildContext context) {
+    return YataContentScreen(
+      title: "Done:",
+      defaultText: "Oh! You haven't done anything yet!",
+      elementsList: ElementsList.done,
+      mainButton: YataButtonTemplate(
+        action: (int index) => controller.setDoneDeleted(index),
+        child: const Icon(Icons.clear),
+      ),
+      secondaryButton: YataButtonTemplate(
+        action: (int index) => controller.unsetDone(index),
+        child: const Icon(Icons.restore),
+      ),
+    );
   }
 }
 
