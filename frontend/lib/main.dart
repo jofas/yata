@@ -59,6 +59,7 @@ class YataBaseScreen extends StatelessWidget {
         return LoadingScreen();
       }
 
+      // TODO: scaffold and onn in this one (make contentScreen smaller)
       return child;
     });
   }
@@ -78,6 +79,7 @@ class LoadingScreen extends StatelessWidget {
 class LoginScreen extends StatelessWidget {
   final AuthController controller = AuthController.findOrCreate();
 
+  // TODO: build own form with Getx and all
   final _formKey = GlobalKey<FormState>();
 
   final usernameController = TextEditingController();
@@ -86,56 +88,50 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: <Widget>[
-            Padding(
-              padding: EdgeInsets.all(10.0),
-              child: TextFormField(
-                controller: usernameController,
-                validator: (value) {
-                  if (value.isEmpty)
-                    return "Can't be empty";
-                  return null;
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "Username or E-Mail Address",
+      body: Center(
+        child: Container(
+          constraints: BoxConstraints(maxWidth:300, maxHeight:300),
+          child: Card(
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: TextField(
+                    controller: usernameController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: "Username or E-Mail Address",
+                      //errorText: "LOLZ",
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(10.0),
-              child: TextFormField(
-                controller: passwordController,
-                validator: (value) {
-                  if (value.isEmpty)
-                    return "Can't be empty";
-                  return null;
-                },
-                obscureText: true,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "Password",
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: "Password",
+                    ),
+                  ),
                 ),
-              ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // TODO: check input
+                    await controller.login(
+                      usernameController.text,
+                      passwordController.text,
+                    );
+                    // TODO: authController should
+                    // have observable enum whether
+                    // request was successful or not
+                  },
+                  child: Text("Login"),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState.validate()) {
-                  await controller.login(
-                    usernameController.text,
-                    passwordController.text,
-                  );
-                  // TODO: authController should
-                  // have observable enum whether
-                  // request was successful or not
-                }
-              },
-              child: Text("Login"),
-            )
-          ],
+          ),
         ),
       ),
     );
