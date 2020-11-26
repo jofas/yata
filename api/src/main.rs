@@ -211,7 +211,7 @@ async fn main() -> std::io::Result<()> {
 
   let collection = init_database().await.unwrap();
 
-  let url = "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs";
+  let url = "http://localhost:9998/certs";
   let key_set = Arc::new(KeyStore::new_from(url).await.unwrap());
   let auth_fn = partial!(move auth => _, _, key_set.clone());
 
