@@ -92,25 +92,9 @@ static SRV: &'static str = "http://localhost:8080/auth/realms/yata/";
 static CERTS_ENDPOINT: &'static str = "protocol/openid-connect/certs";
 static TOKEN_ENDPOINT: &'static str = "protocol/openid-connect/token";
 
-#[post("/token")]
-async fn token(
-  body: web::Json<TokenRequestData>,
-  client: web::Data<Client>) -> impl Responder
-{
-  let token_request = TokenRequest::from(body.into_inner());
-  let client_response =
-    client.post(format!("{}{}", SRV, TOKEN_ENDPOINT))
-      .header("Content-Type", "application/x-www-form-urlencoded")
-      .send_body(token_request.into_flattened_url_string())
-      .await
-      .unwrap();
-
-  client_response_to_server_response(client_response).await
-}
-
-async fn client_response_to_server_response(
-  mut client_response: ClientResponse<dev::Decompress<dev::Payload>>) -> HttpResponse
-{
+async fn into_response(
+  mut client_response: ClientResponse<dev::Decompress<dev::Payload>>
+) -> HttpResponse {
   let mut response = HttpResponse::build(client_response.status());
 
   client_response.headers().iter().for_each(|(k, v)| {
@@ -120,15 +104,25 @@ async fn client_response_to_server_response(
   response.body(client_response.body().await.unwrap())
 }
 
+#[post("/token")]
+async fn token(
+  body: web::Json<TokenRequestData>,
+  client: web::Data<Client>) -> impl Responder
+{
+  let token_request = TokenRequest::from(body.into_inner());
+  into_response(client.post(format!("{}{}", SRV, TOKEN_ENDPOINT))
+    .header("Content-Type", "application/x-www-form-urlencoded")
+    .send_body(token_request.into_flattened_url_string())
+    .await
+    .unwrap()).await
+}
+
 #[get("/certs")]
 async fn certs(client: web::Data<Client>) -> impl Responder {
-  let client_response =
-    client.get(format!("{}{}", SRV, CERTS_ENDPOINT))
-      .send()
-      .await
-      .unwrap();
-
-  client_response_to_server_response(client_response).await
+  into_response(client.get(format!("{}{}", SRV, CERTS_ENDPOINT))
+    .send()
+    .await
+    .unwrap()).await
 }
 
 #[actix_web::main]
