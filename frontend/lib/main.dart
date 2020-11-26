@@ -592,6 +592,7 @@ class AuthController extends YataController {
 
   login(String username, String password) async {
     http.Response response = null;
+
     try {
       response = await _client.post("$KEYCLOAK_BASE/token",
         body: {
@@ -605,10 +606,15 @@ class AuthController extends YataController {
       throw AuthException.networkError();
     }
 
-    if (response.statusCode == 401)
-      throw AuthException.unauthorized();
-
-    _setAuthenticationAndCyclicallyRefreshToken(response);
+    switch (response.statusCode) {
+      case 200:
+        _setAuthenticationAndCyclicallyRefreshToken(response);
+        break;
+      case 401:
+        throw AuthException.unauthorized();
+      default:
+        throw AuthException.unexpectedStatusCode(response.statusCode);
+    }
   }
 
   logout() async {
@@ -621,6 +627,34 @@ class AuthController extends YataController {
     isAuthenticated = false;
   }
 
+  _setAuthenticationAndCyclicallyRefreshToken(http.Response response) async {
+    await _setTokenFromResponse(response);
+
+    if (isAuthenticated)
+      Future.delayed(
+        Duration(seconds: accessTokenExpiresIn),
+        _cyclicallyRefreshToken,
+      );
+  }
+
+  _setTokenFromResponse(http.Response response) async {
+    var responseBody = json.decode(response.body);
+
+    var access = JsonWebToken.unverified(responseBody["access_token"]);
+    var accessVerified = await access.verify(_keyStore);
+
+    if (accessVerified) {
+      _accessToken = access;
+      _refreshToken = JsonWebToken.unverified(responseBody["refresh_token"]);
+
+      _saveRefreshTokenToPersistentMemory();
+
+      isAuthenticated = true;
+    } else {
+      throw AuthException.tokenVerificationError();
+    }
+  }
+
   Future<void> _cyclicallyRefreshToken() async {
     var response = await _client.post("$KEYCLOAK_BASE/token",
       body: {
@@ -631,41 +665,6 @@ class AuthController extends YataController {
     );
 
     _setAuthenticationAndCyclicallyRefreshToken(response);
-  }
-
-  _setAuthenticationAndCyclicallyRefreshToken(http.Response response) async {
-    isAuthenticated = await _setTokenFromResponse(response);
-
-    if (isAuthenticated)
-      Future.delayed(
-        Duration(seconds: accessTokenExpiresIn),
-        _cyclicallyRefreshToken,
-      );
-  }
-
-  // TODO bool -> Error
-  Future<bool> _setTokenFromResponse(http.Response response) async {
-    if (response.statusCode == 200) {
-      var responseBody = json.decode(response.body);
-
-      var access = JsonWebToken.unverified(responseBody["access_token"]);
-      var accessVerified = await access.verify(_keyStore);
-
-      if (accessVerified) {
-        _accessToken = access;
-        _refreshToken = JsonWebToken.unverified(responseBody["refresh_token"]);
-
-        _saveRefreshTokenToPersistentMemory();
-
-        return true;
-      }
-
-      print("token verification error");
-      return false;
-    }
-
-    print("response error");
-    return false;
   }
 
   Future<String> _getRefreshTokenFromPersistentMemory() async {
@@ -896,7 +895,10 @@ class YataController extends GetxController {
   }
 }
 
-enum AuthExceptionCause { unauthorized, networkError }
+enum AuthExceptionCause {
+  unauthorized, networkError, unexpectedStatusCode,
+  tokenVerificationError
+}
 
 class AuthException {
   AuthExceptionCause cause;
@@ -909,6 +911,17 @@ class AuthException {
   AuthException.networkError() :
     this.cause = AuthExceptionCause.networkError,
     this.message = "Auth server unreachable";
+
+  AuthException.unexpectedStatusCode(int statusCode) :
+    this.cause = AuthExceptionCause.unexpectedStatusCode,
+    this.message = "Unexpectedly received status $statusCode " +
+                   "from auth server";
+
+  AuthException.tokenVerificationError() :
+    this.cause = AuthExceptionCause.tokenVerificationError,
+    this.message = "Could not verify token. Perhaps the key store " +
+                   "of the auth server is not yet loaded";
+
 }
 
 // TODO: match ElementStatus instead of list
