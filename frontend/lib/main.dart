@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 
 import 'dart:collection';
 import 'dart:io';
@@ -24,6 +25,11 @@ class YataApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        dividerTheme: DividerThemeData(
+          thickness: 1,
+          space: 50,
+          color: Color(0xFF888888),
+        ),
       ),
       initialRoute: "/",
       getPages: [
@@ -473,15 +479,53 @@ class LoginScreen extends StatelessWidget {
                           ),
                           Flexible(
                             flex: 1,
-                            child: ElevatedButton(
-                              onPressed: submit,
-                              child: Text("Login"),
+                            child: Row(
+                              children: <Widget> [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: submit,
+                                    child: Text("Sign in"),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
+                ),
+                Row(
+                  children: <Widget> [
+                    Expanded(
+                      child: Divider(),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 5.0),
+                      child: Text(
+                        "New to Yata?",
+                        style: TextStyle(
+                          color: Theme.of(context).dividerTheme.color,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: <Widget> [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => print("hellooo"),
+                        child: Text("Register"),
+                        style: ButtonStyle(
+                          backgroundColor: MaterialStateProperty.all<Color>(Colors.green),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -492,6 +536,8 @@ class LoginScreen extends StatelessWidget {
   }
 
   submit() async {
+    // This if statement is a simple validator. Ugly, but it saves a
+    // few HTTP requests to the auth server
     if (usernameController.text.length == 0 ||
         passwordController.text.length == 0)
     {
