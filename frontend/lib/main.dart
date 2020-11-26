@@ -561,7 +561,7 @@ class AuthController extends YataController {
     _getRefreshTokenFromPersistentMemory().then((token) async {
       if (token != null) {
         _refreshToken = JsonWebToken.unverified(token);
-        await _cyclicallyRefreshToken();
+        await _authenticate(TokenRequest.refreshToken(token));
       }
       hasLoaded = true;
     });
@@ -590,31 +590,8 @@ class AuthController extends YataController {
     (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
   ).toInt();
 
-  login(String username, String password) async {
-    http.Response response = null;
-
-    try {
-      response = await _client.post("$KEYCLOAK_BASE/token",
-        body: {
-          "username": username,
-          "password": password,
-          "client_id": "yata_frontend",
-          "grant_type": "password",
-        }
-      );
-    } catch (e) {
-      throw AuthException.networkError();
-    }
-
-    switch (response.statusCode) {
-      case 200:
-        _setAuthenticationAndCyclicallyRefreshToken(response);
-        break;
-      case 401:
-        throw AuthException.unauthorized();
-      default:
-        throw AuthException.unexpectedStatusCode(response.statusCode);
-    }
+  login(String username, String password) {
+    _authenticate(TokenRequest.password(username, password));
   }
 
   logout() async {
@@ -627,14 +604,43 @@ class AuthController extends YataController {
     isAuthenticated = false;
   }
 
-  _setAuthenticationAndCyclicallyRefreshToken(http.Response response) async {
-    await _setTokenFromResponse(response);
+  Future<void> _cyclicallyRefreshToken() {
+    Future.delayed(Duration(seconds: accessTokenExpiresIn), () {
+      // User could have logged between the call of this function and
+      // its execution. Authentication with a refresh token only works
+      // if the user is authenticated in the first place.
+      if (isAuthenticated) {
+        _authenticate(
+          TokenRequest.refreshToken(_refreshToken.toCompactSerialization())
+        );
+      }
+    });
+  }
 
-    if (isAuthenticated)
-      Future.delayed(
-        Duration(seconds: accessTokenExpiresIn),
-        _cyclicallyRefreshToken,
-      );
+  _authenticate(TokenRequest request) async {
+    var response = await _getTokenResponse(request);
+
+    switch (response.statusCode) {
+      case 200:
+        await _setTokenFromResponse(response);
+        _cyclicallyRefreshToken();
+        break;
+      case 401:
+        throw AuthException.unauthorized();
+      default:
+        throw AuthException.unexpectedStatusCode(response.statusCode);
+    }
+  }
+
+  Future<http.Response> _getTokenResponse(TokenRequest request) async {
+    try {
+      var requestBody = {"client_id": "yata_frontend"};
+      requestBody.addAll(request.generateRequestBody());
+
+      return await _client.post("$KEYCLOAK_BASE/token", body: requestBody);
+    } catch (e) {
+      throw AuthException.networkError();
+    }
   }
 
   _setTokenFromResponse(http.Response response) async {
@@ -653,18 +659,6 @@ class AuthController extends YataController {
     } else {
       throw AuthException.tokenVerificationError();
     }
-  }
-
-  Future<void> _cyclicallyRefreshToken() async {
-    var response = await _client.post("$KEYCLOAK_BASE/token",
-      body: {
-        "refresh_token": _refreshToken.toCompactSerialization(),
-        "client_id": "yata_frontend",
-        "grant_type": "refresh_token",
-      }
-    );
-
-    _setAuthenticationAndCyclicallyRefreshToken(response);
   }
 
   Future<String> _getRefreshTokenFromPersistentMemory() async {
@@ -922,6 +916,35 @@ class AuthException {
     this.message = "Could not verify token. Perhaps the key store " +
                    "of the auth server is not yet loaded";
 
+}
+
+class TokenRequest {
+  String _grant_type;
+  String _username;
+  String _password;
+  String _refreshToken;
+
+  TokenRequest.password(this._username, this._password) :
+    this._grant_type = "password";
+
+  TokenRequest.refreshToken(this._refreshToken) :
+    this._grant_type = "refresh_token";
+
+  Map<String, String> generateRequestBody() {
+    switch (_grant_type) {
+      case "password":
+        return {
+          "grant_type": _grant_type,
+          "username": _username,
+          "password": _password,
+        };
+      case "refresh_token":
+        return {
+          "grant_type": _grant_type,
+          "refresh_token": _refreshToken,
+        };
+    }
+  }
 }
 
 // TODO: match ElementStatus instead of list
