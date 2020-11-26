@@ -405,6 +405,7 @@ class LoginScreen extends StatelessWidget {
             child: Column(
               children: <Widget>[
                 Obx(() {
+                  // TODO: abstract this
                   switch (exception) {
                     case AuthExceptionCause.unauthorized:
                       return Card(
@@ -585,7 +586,12 @@ debugPrintJWT(String token) {
   var split = token.split(".");
 
   var header = json.decode(utf8.decode(base64.decode(base64Url.normalize(split[0]))));
+  print("header");
   print(header);
+
+  var claims = json.decode(utf8.decode(base64.decode(base64Url.normalize(split[1]))));
+  print("claims");
+  print(claims);
 }
 
 class AuthController extends YataController {
@@ -694,6 +700,8 @@ class AuthController extends YataController {
 
     var access = JsonWebToken.unverified(responseBody["access_token"]);
     var accessVerified = await access.verify(_keyStore);
+
+    debugPrintJWT(responseBody["access_token"]);
 
     if (accessVerified) {
       _accessToken = access;
