@@ -596,7 +596,8 @@ debugPrintJWT(String token) {
 
 class AuthController extends YataController {
   static const KEYCLOAK_BASE =
-    "http://localhost:8080/auth/realms/yata/protocol/openid-connect";
+    //"http://localhost:8080/auth/realms/yata/protocol/openid-connect";
+    "http://localhost:9998";
 
   final _isAuthenticated = false.obs;
 
@@ -613,7 +614,16 @@ class AuthController extends YataController {
     _getRefreshTokenFromPersistentMemory().then((token) async {
       if (token != null) {
         _refreshToken = JsonWebToken.unverified(token);
-        await _authenticate(TokenRequest.refreshToken(token));
+        // we don't care what error is thrown by authentication
+        // (most likely a 400 Bad Request header when the refresh
+        // token is expired), because we just fallback to the login
+        // screen and delete the not working refresh token from
+        // local storage
+        try {
+          await _authenticate(TokenRequest.refreshToken(token));
+        } catch (_) {
+          await logout();
+        }
       }
       hasLoaded = true;
     });
@@ -642,8 +652,8 @@ class AuthController extends YataController {
     (_accessToken.claims["exp"] - _accessToken.claims["iat"]) * 0.98
   ).toInt();
 
-  login(String username, String password) {
-    _authenticate(TokenRequest.password(username, password));
+  login(String username, String password) async {
+    await _authenticate(TokenRequest.password(username, password));
   }
 
   logout() async {
@@ -686,10 +696,13 @@ class AuthController extends YataController {
 
   Future<http.Response> _getTokenResponse(TokenRequest request) async {
     try {
-      var requestBody = {"client_id": "yata_frontend"};
-      requestBody.addAll(request.generateRequestBody());
-
-      return await _client.post("$KEYCLOAK_BASE/token", body: requestBody);
+      return await _client.post(
+        "$KEYCLOAK_BASE/token",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: json.encode(request.generateRequestBody()),
+      );
     } catch (e) {
       throw AuthException.networkError();
     }
@@ -701,7 +714,7 @@ class AuthController extends YataController {
     var access = JsonWebToken.unverified(responseBody["access_token"]);
     var accessVerified = await access.verify(_keyStore);
 
-    debugPrintJWT(responseBody["access_token"]);
+    //debugPrintJWT(responseBody["access_token"]);
 
     if (accessVerified) {
       _accessToken = access;
@@ -984,19 +997,17 @@ class TokenRequest {
   TokenRequest.refreshToken(this._refreshToken) :
     this._grant_type = "refresh_token";
 
-  Map<String, String> generateRequestBody() {
+  Map<String, dynamic> generateRequestBody() {
     switch (_grant_type) {
       case "password":
-        return {
-          "grant_type": _grant_type,
+        return { "Password": {
           "username": _username,
           "password": _password,
-        };
+        }};
       case "refresh_token":
-        return {
-          "grant_type": _grant_type,
+        return { "RefreshToken": {
           "refresh_token": _refreshToken,
-        };
+        }};
     }
   }
 }
