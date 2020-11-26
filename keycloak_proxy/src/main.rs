@@ -1,17 +1,12 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer,
+use actix_web::{get, post, web, dev, App, HttpResponse, HttpServer,
   Responder};
 use actix_web::client::{Client, ClientResponse};
-use actix_web::dev::{self, Service, ServiceRequest, Payload};
 
 use actix_cors::Cors;
 
 use serde_derive::{Serialize, Deserialize};
-use serde_json as json;
+//use serde_json as json;
 use serde_qs as qs;
-
-use futures::executor;
-use futures::future::{self, FutureExt};
-use futures::stream::StreamExt;
 
 use std::convert::From;
 
@@ -103,7 +98,7 @@ async fn token(
   client: web::Data<Client>) -> impl Responder
 {
   let token_request = TokenRequest::from(body.into_inner());
-  let mut client_response =
+  let client_response =
     client.post(format!("{}{}", SRV, TOKEN_ENDPOINT))
       .header("Content-Type", "application/x-www-form-urlencoded")
       .send_body(token_request.into_flattened_url_string())
@@ -127,7 +122,7 @@ async fn client_response_to_server_response(
 
 #[get("/certs")]
 async fn certs(client: web::Data<Client>) -> impl Responder {
-  let mut client_response =
+  let client_response =
     client.get(format!("{}{}", SRV, CERTS_ENDPOINT))
       .send()
       .await
