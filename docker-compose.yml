@@ -1,14 +1,57 @@
-version:
+version: "3.7"
 
 services:
-  frontend:
-    image: yata_frontend_webapp
-    ports: 8080:80
+  keycloak_mysql:
+    image: mysql:5.7
+    volumes:
+      - ./volumes/keycloak:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
+    container_name: keycloak_mysql
 
-  api:
-    image: yata_api
-    ports: 9999:9999
+  keycloak:
+    image: quay.io/keycloak/keycloak
+    ports:
+      - 8080:8080
+    environment:
+      DB_ADDR: keycloak_mysql
+      DB_USER: root
+      DB_PASSWORD: root
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs"]
+      interval: 10s
+      retries: 20
+
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+    volumes:
+      - ./volumes/mongo:/data/db
 
   keycloak_proxy:
     image: keycloak_proxy
-    ports: 9998:9998
+    ports:
+     - 9998:9998
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  api:
+    image: yata_api
+    ports:
+      - 9999:9999
+    depends_on:
+      keycloak_proxy:
+        condition: service_started
+    restart: on-failure
+
+  frontend:
+    image: yata_frontend_webapp
+    ports:
+      - 8000:80
