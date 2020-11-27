@@ -1,0 +1,14 @@
+version:
+
+services:
+  frontend:
+    image: yata_frontend_webapp
+    ports: 8080:80
+
+  api:
+    image: yata_api
+    ports: 9999:9999
+
+  keycloak_proxy:
+    image: keycloak_proxy
+    ports: 9998:9998

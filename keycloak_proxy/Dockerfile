@@ -3,5 +3,5 @@ COPY . .
 RUN cargo build --release
 
 FROM opensuse/leap:latest
-COPY --from=build ./target/release/yata_api ./
-CMD ./yata_api
+COPY --from=build ./target/release/keycloak_proxy ./
+CMD ./keycloak_proxy

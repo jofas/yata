@@ -126,6 +126,12 @@ async fn certs(client: web::Data<Client>) -> impl Responder {
     .unwrap()).await
 }
 
+// TODO: register endpoint
+#[post("/register")]
+async fn register(client: web::Data<Client>) -> impl Responder {
+  "Unimplemented!"
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   println!("STARTING KEYCLOAK_PROXY SERVER");
@@ -145,6 +151,7 @@ async fn main() -> std::io::Result<()> {
       */
       .service(certs)
       .service(token)
+      .service(register)
   })
   .bind("0.0.0.0:9998")?
   .run()
