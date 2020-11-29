@@ -199,8 +199,12 @@ async fn auth(
   Err(AuthenticationError::from(config).into())
 }
 
-async fn init_database() -> MDBResult<Collection> {
-  let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
+async fn init_database(database_server: String)
+  -> MDBResult<Collection>
+{
+  let client_options = ClientOptions::parse(
+    &format!("mongodb://{}:27017", database_server)
+  ).await?;
   let client = Client::with_options(client_options)?;
   let database = client.database("yata_db");
   Ok(database.collection("yata_collection"))
@@ -210,7 +214,8 @@ async fn init_database() -> MDBResult<Collection> {
 async fn main() -> std::io::Result<()> {
   println!("STARTING YATA_API SERVER");
 
-  let collection = init_database().await.unwrap();
+  let database_server = env::var("YATA_API_MONGODB_SERVER").unwrap();
+  let collection = init_database(database_server).await.unwrap();
 
   let url = format!(
     "http://{}:{}/certs",

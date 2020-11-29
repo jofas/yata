@@ -14,6 +14,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak
+    # TODO: port only exposed for debugging
     ports:
       - 8080:8080
     environment:
@@ -30,10 +31,11 @@ services:
 
   mongodb:
     image: mongo
-    ports:
-      - 27017:27017
+    #ports:
+    #  - 27017:27017
     volumes:
       - ./volumes/mongo:/data/db
+    container_name: yata_api_mongodb
 
   keycloak_proxy:
     image: keycloak_proxy
@@ -54,8 +56,9 @@ services:
     ports:
       - 9999:9999
     environment:
-      YATA_API_KEYCLOAK_PROXY_ROOT: keycloak_proxy
+      YATA_API_KEYCLOAK_PROXY_SERVER: keycloak_proxy
       YATA_API_KEYCLOAK_PROXY_PORT: 9998
+      YATA_API_MONGODB_SERVER: yata_api_mongodb
     depends_on:
       keycloak_proxy:
         condition: service_started
