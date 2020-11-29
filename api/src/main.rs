@@ -32,6 +32,7 @@ extern crate partial_application;
 
 use std::sync::Arc;
 use std::convert::TryFrom;
+use std::env;
 
 #[derive(Serialize, Deserialize, Debug)]
 enum ElementStatus { Todo, Done, Deleted }
@@ -211,8 +212,13 @@ async fn main() -> std::io::Result<()> {
 
   let collection = init_database().await.unwrap();
 
-  let url = "http://localhost:9998/certs";
-  let key_set = Arc::new(KeyStore::new_from(url).await.unwrap());
+  let url = format!(
+    "http://{}:{}/certs",
+    env::var("YATA_API_KEYCLOAK_PROXY_SERVER").unwrap(),
+    env::var("YATA_API_KEYCLOAK_PROXY_PORT").unwrap(),
+  );
+  println!("getting keystore from: {}", url);
+  let key_set = Arc::new(KeyStore::new_from(&url).await.unwrap());
   let auth_fn = partial!(move auth => _, _, key_set.clone());
 
   HttpServer::new(move || {

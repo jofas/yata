@@ -8,7 +8,11 @@ use serde_derive::{Serialize, Deserialize};
 //use serde_json as json;
 use serde_qs as qs;
 
+#[macro_use]
+extern crate lazy_static;
+
 use std::convert::From;
+use std::env;
 
 trait IntoFlattenedUrlString {
   fn into_flattened_url_string(self) -> String;
@@ -65,11 +69,11 @@ impl From<&TokenRequestData> for TokenRequestMeta {
     match token_request_data {
       &TokenRequestData::RefreshToken(_) => TokenRequestMeta {
         grant_type: String::from("refresh_token"),
-        client_id: String::from(CLIENT_ID),
+        client_id: CLIENT_ID.clone(),
       },
       &TokenRequestData::Password(_) => TokenRequestMeta {
         grant_type: String::from("password"),
-        client_id: String::from(CLIENT_ID),
+        client_id: CLIENT_ID.clone(),
       },
     }
   }
@@ -98,11 +102,7 @@ async fn into_response(
   response.body(client_response.body().await.unwrap())
 }
 
-static CLIENT_ID: &'static str = "yata_keycloak_proxy";
-static SRV: &'static str = "http://localhost:8080/auth/realms/yata/";
 
-static CERTS_ENDPOINT: &'static str = "protocol/openid-connect/certs";
-static TOKEN_ENDPOINT: &'static str = "protocol/openid-connect/token";
 
 #[post("/token")]
 async fn token(
@@ -111,7 +111,7 @@ async fn token(
 {
   let token_request = TokenRequest::from(body.into_inner());
 
-  into_response(client.post(format!("{}{}", SRV, TOKEN_ENDPOINT))
+  into_response(client.post(format!("{}{}", *SERVER, TOKEN_ENDPOINT))
     .header("Content-Type", "application/x-www-form-urlencoded")
     .send_body(token_request.into_flattened_url_string())
     .await
@@ -120,10 +120,17 @@ async fn token(
 
 #[get("/certs")]
 async fn certs(client: web::Data<Client>) -> impl Responder {
-  into_response(client.get(format!("{}{}", SRV, CERTS_ENDPOINT))
+  let response = client.get(format!("{}{}", SERVER.clone(), CERTS_ENDPOINT))
     .send()
-    .await
-    .unwrap()).await
+    .await;
+
+  match response {
+    Ok(response) => into_response(response).await,
+    Err(e) => {
+      println!("{:?}", e);
+      HttpResponse::InternalServerError().finish()
+    }
+  }
 }
 
 // TODO: register endpoint
@@ -132,9 +139,41 @@ async fn register(client: web::Data<Client>) -> impl Responder {
   "Unimplemented!"
 }
 
+lazy_static!{
+  static ref CLIENT_ID: String = env::var("KEYCLOAK_PROXY_CLIENT_ID")
+    .unwrap();
+  static ref SERVER: String = format!(
+    "http://{}:8080/auth/realms/{}/",
+    env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap(),
+    env::var("KEYCLOAK_PROXY_REALM").unwrap(),
+  );
+}
+
+static CERTS_ENDPOINT: &'static str = "protocol/openid-connect/certs";
+static TOKEN_ENDPOINT: &'static str = "protocol/openid-connect/token";
+
+//static CLIENT_ID: &'static str = env!("KEYCLOAK_PROXY_CLIENT_ID");
+/*
+static SERVER: &'static str = concat!(
+  "http://", env!("KEYCLOAK_PROXY_KEYCLOAK_SERVER"),
+  ":8080/auth/realms/", env!("KEYCLOAK_PROXY_REALM"), "/"
+);
+*/
+
+
+/*
+// TODO: into runtime, not compile time
+static ADDR: &'static str = concat!(
+  "0.0.0.0:", env!("KEYCLOAK_PROXY_PORT")
+);
+*/
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   println!("STARTING KEYCLOAK_PROXY SERVER");
+
+  let port = env::var("KEYCLOAK_PROXY_PORT").unwrap();
+  let addr = format!("0.0.0.0:{}", port);
 
   HttpServer::new(move || {
     App::new()
@@ -153,7 +192,7 @@ async fn main() -> std::io::Result<()> {
       .service(token)
       .service(register)
   })
-  .bind("0.0.0.0:9998")?
+  .bind(&addr)?
   .run()
   .await
 }

@@ -873,6 +873,7 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "futures",
+ "lazy_static",
  "serde",
  "serde_derive",
  "serde_json",

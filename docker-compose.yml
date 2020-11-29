@@ -22,6 +22,7 @@ services:
       DB_PASSWORD: root
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: admin
+    container_name: keycloak
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs"]
       interval: 10s
@@ -38,6 +39,12 @@ services:
     image: keycloak_proxy
     ports:
      - 9998:9998
+    environment:
+      KEYCLOAK_PROXY_CLIENT_ID: keycloak_proxy
+      KEYCLOAK_PROXY_REALM: yata
+      KEYCLOAK_PROXY_KEYCLOAK_SERVER: keycloak
+      KEYCLOAK_PROXY_PORT: 9998
+    container_name: keycloak_proxy
     depends_on:
       keycloak:
         condition: service_healthy
@@ -46,6 +53,9 @@ services:
     image: yata_api
     ports:
       - 9999:9999
+    environment:
+      YATA_API_KEYCLOAK_PROXY_ROOT: keycloak_proxy
+      YATA_API_KEYCLOAK_PROXY_PORT: 9998
     depends_on:
       keycloak_proxy:
         condition: service_started
