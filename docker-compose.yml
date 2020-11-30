@@ -52,7 +52,7 @@ services:
     container_name: keycloak
     depends_on:
       keycloak_mysql:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8080/auth/realms/yata/protocol/openid-connect/certs"]
       interval: 10s
@@ -66,6 +66,10 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: keycloak
     container_name: keycloak_mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      retries: 20
 
   mongodb:
     image: mongo
