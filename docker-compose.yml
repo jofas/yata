@@ -1,22 +1,23 @@
 version: "3.7"
 
-# TODO: multiple networks
+# TODO: multiple networks ...
 #       compose for debuggin (only keycloak and database)
+#       use .env file for populating this file
 
 services:
   frontend:
     image: yata_frontend_webapp
     ports:
-      - 8000:80
+      - ${FRONTEND_PORT}:80
 
   api:
     image: yata_api
     ports:
-      - 9999:9999
+      - ${YATA_API_PORT}:${YATA_API_PORT}
     environment:
-      YATA_API_KEYCLOAK_PROXY_SERVER: keycloak_proxy
-      YATA_API_KEYCLOAK_PROXY_PORT: 9998
-      YATA_API_MONGODB_SERVER: yata_api_mongodb
+      YATA_API_KEYCLOAK_PROXY_SERVER: ${KEYCLOAK_PROXY_SERVER_NAME}
+      YATA_API_KEYCLOAK_PROXY_PORT: ${KEYCLOAK_PROXY_PORT}
+      YATA_API_MONGODB_SERVER: ${MONGODB_SERVER_NAME}
     depends_on:
       keycloak_proxy:
         condition: service_started
@@ -25,31 +26,29 @@ services:
   keycloak_proxy:
     image: keycloak_proxy
     ports:
-     - 9998:9998
+      - ${KEYCLOAK_PROXY_PORT}:${KEYCLOAK_PROXY_PORT}
     environment:
-      KEYCLOAK_PROXY_CLIENT_ID: keycloak_proxy
-      KEYCLOAK_PROXY_REALM: yata
-      KEYCLOAK_PROXY_KEYCLOAK_SERVER: keycloak
-      KEYCLOAK_PROXY_PORT: 9998
-    container_name: keycloak_proxy
+      KEYCLOAK_PROXY_CLIENT_ID: ${KEYCLOAK_PROXY_CLIENT_ID}
+      KEYCLOAK_PROXY_REALM: ${KEYCLOAK_PROXY_REALM}
+      KEYCLOAK_PROXY_KEYCLOAK_SERVER: ${KEYCLOAK_SERVER_NAME}
+      KEYCLOAK_PROXY_PORT: ${KEYCLOAK_PROXY_PORT}
+    container_name: ${KEYCLOAK_PROXY_SERVER_NAME}
     depends_on:
       keycloak:
-        #condition: service_started
         condition: service_healthy
 
   keycloak:
     image: quay.io/keycloak/keycloak
-    # TODO: port only exposed for debugging
-    ports:
-      - 8080:8080
+    #ports:
+    #  - 8080:8080
     environment:
       DB_VENDOR: MYSQL
-      DB_ADDR: keycloak_mysql
+      DB_ADDR: ${KEYCLOAK_MYSQL_SERVER_NAME}
       DB_USER: root
-      DB_PASSWORD: root
-      KEYCLOAK_USER: admin
-      KEYCLOAK_PASSWORD: admin
-    container_name: keycloak
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      KEYCLOAK_USER: ${KEYCLOAK_USER}
+      KEYCLOAK_PASSWORD: ${KEYCLOAK_PASSWORD}
+    container_name: ${KEYCLOAK_SERVER_NAME}
     depends_on:
       keycloak_mysql:
         condition: service_healthy
@@ -63,9 +62,9 @@ services:
     volumes:
       - ./volumes/keycloak:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: keycloak
-    container_name: keycloak_mysql
+    container_name: ${KEYCLOAK_MYSQL_SERVER_NAME}
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
@@ -78,4 +77,4 @@ services:
     #  - 27017:27017
     volumes:
       - ./volumes/mongo:/data/db
-    container_name: yata_api_mongodb
+    container_name: ${MONGODB_SERVER_NAME}

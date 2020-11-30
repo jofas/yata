@@ -214,6 +214,10 @@ async fn init_database(database_server: String)
 async fn main() -> std::io::Result<()> {
   println!("STARTING YATA_API SERVER");
 
+  let addr = format!(
+    "0.0.0.0:{}", env::var("YATA_API_PORT").unwrap()
+  );
+
   let database_server = env::var("YATA_API_MONGODB_SERVER").unwrap();
   let collection = init_database(database_server).await.unwrap();
 
@@ -246,7 +250,7 @@ async fn main() -> std::io::Result<()> {
       .service(delete_element)
       .service(empty_bin)
   })
-  .bind("0.0.0.0:9999")?
+  .bind(&addr)?
   .run()
   .await
 }
