@@ -9,7 +9,7 @@ RUN flutter channel beta
 RUN flutter upgrade
 RUN flutter config --enable-web
 COPY . .
-RUN flutter build web
+RUN flutter build web --release
 
 # serve yata webapp
 FROM httpd:2.4

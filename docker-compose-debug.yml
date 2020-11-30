@@ -1,39 +1,10 @@
+# only start external services and expose them on localhost.
+# Yata-specific services must be launched by hand, sourcing .env_debug
+# before running them.
+
 version: "3.7"
 
 services:
-  frontend:
-    image: yata_frontend_webapp
-    ports:
-      - ${FRONTEND_PORT}:80
-
-  api:
-    image: yata_api
-    ports:
-      - ${YATA_API_PORT}:${YATA_API_PORT}
-    environment:
-      YATA_API_KEYCLOAK_PROXY_SERVER: ${KEYCLOAK_PROXY_SERVER_NAME}
-      YATA_API_KEYCLOAK_PROXY_PORT: ${KEYCLOAK_PROXY_PORT}
-      YATA_API_MONGODB_SERVER: ${MONGODB_SERVER_NAME}
-      YATA_API_PORT: ${YATA_API_PORT}
-    depends_on:
-      keycloak_proxy:
-        condition: service_started
-    restart: on-failure
-
-  keycloak_proxy:
-    image: keycloak_proxy
-    ports:
-      - ${KEYCLOAK_PROXY_PORT}:${KEYCLOAK_PROXY_PORT}
-    environment:
-      KEYCLOAK_PROXY_CLIENT_ID: ${KEYCLOAK_PROXY_CLIENT_ID}
-      KEYCLOAK_PROXY_REALM: ${KEYCLOAK_PROXY_REALM}
-      KEYCLOAK_PROXY_KEYCLOAK_SERVER: ${KEYCLOAK_SERVER_NAME}
-      KEYCLOAK_PROXY_PORT: ${KEYCLOAK_PROXY_PORT}
-    container_name: ${KEYCLOAK_PROXY_SERVER_NAME}
-    depends_on:
-      keycloak:
-        condition: service_healthy
-
   keycloak:
     image: quay.io/keycloak/keycloak
     ports:
