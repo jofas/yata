@@ -1,4 +1,6 @@
 volumes/
+.env
+.env_debug
 
 # Miscellaneous
 /**/*.class

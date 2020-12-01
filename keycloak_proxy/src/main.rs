@@ -136,6 +136,9 @@ async fn certs(client: web::Data<Client>) -> impl Responder {
 // TODO: register endpoint
 #[post("/register")]
 async fn register(client: web::Data<Client>) -> impl Responder {
+  // TODO: get access token (refresh in different thread all the time)
+
+  // then here pass token in header as bearer
   "Unimplemented!"
 }
 
@@ -152,20 +155,10 @@ lazy_static!{
 static CERTS_ENDPOINT: &'static str = "protocol/openid-connect/certs";
 static TOKEN_ENDPOINT: &'static str = "protocol/openid-connect/token";
 
-//static CLIENT_ID: &'static str = env!("KEYCLOAK_PROXY_CLIENT_ID");
 /*
-static SERVER: &'static str = concat!(
-  "http://", env!("KEYCLOAK_PROXY_KEYCLOAK_SERVER"),
-  ":8080/auth/realms/", env!("KEYCLOAK_PROXY_REALM"), "/"
-);
-*/
+struct AdminTokenRequestData {
 
-
-/*
-// TODO: into runtime, not compile time
-static ADDR: &'static str = concat!(
-  "0.0.0.0:", env!("KEYCLOAK_PROXY_PORT")
-);
+}
 */
 
 #[actix_web::main]
@@ -174,6 +167,18 @@ async fn main() -> std::io::Result<()> {
 
   let port = env::var("KEYCLOAK_PROXY_PORT").unwrap();
   let addr = format!("0.0.0.0:{}", port);
+
+  let admin_token_endpoint = format!(
+    "http://{}:8080/auth/realms/master/protocol/openid-connect/token",
+    env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap()
+  );
+
+  let admin_token_request_data =
+
+  client.post(admin_token_endpoint)
+    .send_form(
+  // TODO: grab admin token
+  //       refresh it after it expires
 
   HttpServer::new(move || {
     App::new()

@@ -37,6 +37,7 @@ class YataApp extends StatelessWidget {
         GetPage(name: "/todo", page: () => YataBaseScreen(child: YataTODOScreen())),
         GetPage(name: "/done", page: () => YataBaseScreen(child: YataDoneScreen())),
         GetPage(name: "/bin", page: () => YataBaseScreen(child: YataDeleteScreen())),
+        GetPage(name: "/register", page: () => RegisterScreen()),
       ],
     );
   }
@@ -519,7 +520,7 @@ class LoginScreen extends StatelessWidget {
                   children: <Widget> [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => print("hellooo"),
+                        onPressed: () => Get.toNamed("/register"),
                         child: Text("Register"),
                         style: ButtonStyle(
                           backgroundColor: MaterialStateProperty.all<Color>(Colors.green),
@@ -554,6 +555,15 @@ class LoginScreen extends StatelessWidget {
     } catch (e) {
       exception = e.cause;
     }
+  }
+}
+
+class RegisterScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Text("Hello"),
+    );
   }
 }
 
