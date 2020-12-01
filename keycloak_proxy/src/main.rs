@@ -93,12 +93,6 @@ struct RefreshTokenRequestData {
   refresh_token: String,
 }
 
-impl RefreshTokenRequestData {
-  fn new(refresh_token: String) -> RefreshTokenRequestData {
-    RefreshTokenRequestData{refresh_token: refresh_token}
-  }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct PasswordTokenRequestData {
   username: String,
@@ -193,7 +187,60 @@ struct TokenResponse {
 use actix_rt::time;
 use std::time::Duration;
 
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
+
+struct AdminToken {
+  token_response: Option<TokenResponse>,
+  endpoint: String,
+  token_request: TokenRequest,
+  client: Client,
+}
+
+impl AdminToken {
+  fn new(
+    endpoint: String, token_request: TokenRequest, client: Client
+  ) -> AdminToken {
+    AdminToken{
+      token_response: None,
+      endpoint: endpoint,
+      token_request: token_request,
+      client: client
+    }
+  }
+
+  async fn get_token(&mut self) {
+    self.token_response = Some(self.client.post(&self.endpoint)
+      .header("Content-Type", "application/x-www-form-urlencoded")
+      .send_body(self.token_request.to_flattened_url_string())
+      .await
+      .unwrap()
+      .json()
+      .await
+      .unwrap());
+  }
+
+  fn expires_in(&self) -> Option<i64> {
+    let token_response = self.token_response.as_ref()?;
+    Some(token_response.expires_in)
+  }
+}
+
+impl Default for AdminToken {
+  fn default() -> Self {
+    let endpoint = format!(
+      "http://{}:8080/auth/realms/master/protocol/openid-connect/token",
+      env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap()
+    );
+
+    let token_request = TokenRequest::from(
+      TokenRequestData::Admin(AdminTokenRequestData::default())
+    );
+
+    let client = Client::default();
+
+    AdminToken::new(endpoint, token_request, client)
+  }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -202,46 +249,40 @@ async fn main() -> std::io::Result<()> {
   let port = env::var("KEYCLOAK_PROXY_PORT").unwrap();
   let addr = format!("0.0.0.0:{}", port);
 
-  let admin_token_endpoint = format!(
-    "http://{}:8080/auth/realms/master/protocol/openid-connect/token",
-    env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap()
-  );
+  let mut admin_token = AdminToken::default();
+  admin_token.get_token().await;
 
-  let admin_token_request = TokenRequest::from(
-    TokenRequestData::Admin(AdminTokenRequestData::default())
-  );
+  let admin_token: Arc<RwLock<AdminToken>> =
+    Arc::new(RwLock::new(admin_token));
 
-  let admin_token: Arc<Mutex<TokenResponse>> = Arc::new(Mutex::new(
-    Client::default().post(&admin_token_endpoint)
-      .header("Content-Type", "application/x-www-form-urlencoded")
-      .send_body(admin_token_request.to_flattened_url_string())
-      .await
-      .unwrap()
-      .json()
-      .await
-      .unwrap()));
-
+  let admin_token_for_refresh = admin_token.clone();
   actix_rt::spawn(async move {
     loop {
-      let mut admin_token_inner = admin_token.lock().await;
-
-      time::delay_for(Duration::from_secs_f64(
-          admin_token_inner.expires_in as f64 * 0.98
-      )).await;
-
-      let admin_token_request = TokenRequest::from(
-        TokenRequestData::Admin(AdminTokenRequestData::default())
-      );
-
-      *admin_token_inner =
-        Client::default().post(&admin_token_endpoint)
-          .header("Content-Type", "application/x-www-form-urlencoded")
-          .send_body(admin_token_request.to_flattened_url_string())
+      let delay = {
+        let expires_in = admin_token_for_refresh.read()
           .await
-          .unwrap()
-          .json()
-          .await
-          .unwrap();
+          .expires_in()
+          .unwrap() as f64;
+
+        Duration::from_secs_f64(expires_in * 0.98)
+      };
+
+      time::delay_for(delay).await;
+
+      let mut admin_token_inner =
+        admin_token_for_refresh.write().await;
+
+      admin_token_inner.get_token().await;
+    }
+  });
+
+  let admin_token_for_test = admin_token.clone();
+  actix_rt::spawn(async move {
+    let mut i = 0;
+    loop {
+      let admin_token_inner = admin_token_for_test.read().await;
+      println!("i: {}", i);
+      i += 1;
     }
   });
 
