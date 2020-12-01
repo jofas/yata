@@ -13,9 +13,11 @@ extern crate lazy_static;
 
 use std::convert::From;
 use std::env;
+use std::default::Default;
+use std::sync::Arc;
 
-trait IntoFlattenedUrlString {
-  fn into_flattened_url_string(self) -> String;
+trait ToFlattenedUrlString {
+  fn to_flattened_url_string(&self) -> String;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,11 +26,11 @@ struct TokenRequest {
   meta: TokenRequestMeta,
 }
 
-impl IntoFlattenedUrlString for TokenRequest {
-  fn into_flattened_url_string(self) -> String {
+impl ToFlattenedUrlString for TokenRequest {
+  fn to_flattened_url_string(&self) -> String {
     format!(
       "{}&{}",
-      self.data.into_flattened_url_string(),
+      self.data.to_flattened_url_string(),
       qs::to_string(&self.meta).unwrap(),
     )
   }
@@ -45,14 +47,17 @@ impl From<TokenRequestData> for TokenRequest {
 enum TokenRequestData {
   RefreshToken(RefreshTokenRequestData),
   Password(PasswordTokenRequestData),
+  Admin(AdminTokenRequestData),
 }
 
-impl IntoFlattenedUrlString for TokenRequestData {
-  fn into_flattened_url_string(self) -> String {
+impl ToFlattenedUrlString for TokenRequestData {
+  fn to_flattened_url_string(&self) -> String {
     match self {
       TokenRequestData::RefreshToken(data) =>
         qs::to_string(&data).unwrap(),
       TokenRequestData::Password(data) =>
+        qs::to_string(&data).unwrap(),
+      TokenRequestData::Admin(data) =>
         qs::to_string(&data).unwrap(),
     }
   }
@@ -75,6 +80,10 @@ impl From<&TokenRequestData> for TokenRequestMeta {
         grant_type: String::from("password"),
         client_id: CLIENT_ID.clone(),
       },
+      &TokenRequestData::Admin(_) => TokenRequestMeta {
+        grant_type: String::from("client_credentials"),
+        client_id: String::from(ADMIN_CLI_CLIENT_ID),
+      },
     }
   }
 }
@@ -84,10 +93,27 @@ struct RefreshTokenRequestData {
   refresh_token: String,
 }
 
+impl RefreshTokenRequestData {
+  fn new(refresh_token: String) -> RefreshTokenRequestData {
+    RefreshTokenRequestData{refresh_token: refresh_token}
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct PasswordTokenRequestData {
   username: String,
   password: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct AdminTokenRequestData {
+  client_secret: String,
+}
+
+impl Default for AdminTokenRequestData {
+  fn default() -> Self {
+    AdminTokenRequestData{client_secret: ADMIN_CLI_SECRET.clone()}
+  }
 }
 
 async fn into_response(
@@ -102,8 +128,6 @@ async fn into_response(
   response.body(client_response.body().await.unwrap())
 }
 
-
-
 #[post("/token")]
 async fn token(
   body: web::Json<TokenRequestData>,
@@ -113,7 +137,7 @@ async fn token(
 
   into_response(client.post(format!("{}{}", *SERVER, TOKEN_ENDPOINT))
     .header("Content-Type", "application/x-www-form-urlencoded")
-    .send_body(token_request.into_flattened_url_string())
+    .send_body(token_request.to_flattened_url_string())
     .await
     .unwrap()).await
 }
@@ -150,16 +174,26 @@ lazy_static!{
     env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap(),
     env::var("KEYCLOAK_PROXY_REALM").unwrap(),
   );
+  static ref ADMIN_CLI_SECRET: String =
+    env::var("KEYCLOAK_PROXY_ADMIN_CLI_SECRET").unwrap();
 }
 
+static ADMIN_CLI_CLIENT_ID: &'static str = "admin-cli";
 static CERTS_ENDPOINT: &'static str = "protocol/openid-connect/certs";
 static TOKEN_ENDPOINT: &'static str = "protocol/openid-connect/token";
 
-/*
-struct AdminTokenRequestData {
-
+#[derive(Serialize, Deserialize, Debug)]
+struct TokenResponse {
+  access_token: String,
+  refresh_token: String,
+  expires_in: i64,
+  refresh_expires_in: i64,
 }
-*/
+
+use actix_rt::time;
+use std::time::Duration;
+
+use tokio::sync::Mutex;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -173,12 +207,43 @@ async fn main() -> std::io::Result<()> {
     env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap()
   );
 
-  let admin_token_request_data =
+  let admin_token_request = TokenRequest::from(
+    TokenRequestData::Admin(AdminTokenRequestData::default())
+  );
 
-  client.post(admin_token_endpoint)
-    .send_form(
-  // TODO: grab admin token
-  //       refresh it after it expires
+  let admin_token: Arc<Mutex<TokenResponse>> = Arc::new(Mutex::new(
+    Client::default().post(&admin_token_endpoint)
+      .header("Content-Type", "application/x-www-form-urlencoded")
+      .send_body(admin_token_request.to_flattened_url_string())
+      .await
+      .unwrap()
+      .json()
+      .await
+      .unwrap()));
+
+  actix_rt::spawn(async move {
+    loop {
+      let mut admin_token_inner = admin_token.lock().await;
+
+      time::delay_for(Duration::from_secs_f64(
+          admin_token_inner.expires_in as f64 * 0.98
+      )).await;
+
+      let admin_token_request = TokenRequest::from(
+        TokenRequestData::Admin(AdminTokenRequestData::default())
+      );
+
+      *admin_token_inner =
+        Client::default().post(&admin_token_endpoint)
+          .header("Content-Type", "application/x-www-form-urlencoded")
+          .send_body(admin_token_request.to_flattened_url_string())
+          .await
+          .unwrap()
+          .json()
+          .await
+          .unwrap();
+    }
+  });
 
   HttpServer::new(move || {
     App::new()

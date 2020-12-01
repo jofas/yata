@@ -9,9 +9,11 @@ edition = "2018"
 [dependencies]
 actix-web = "*"
 actix-cors = "*"
+actix-rt = "*"
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
 serde_qs = "*"
 futures = "*"
 lazy_static = "*"
+tokio = { version = "0.3.5", features = ["sync"] }
