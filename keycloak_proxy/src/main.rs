@@ -1,8 +1,10 @@
 use actix_web::{get, post, web, dev, App, HttpResponse, HttpServer,
   Responder};
 use actix_web::client::{Client, ClientResponse};
-
 use actix_cors::Cors;
+use actix_rt::time;
+
+use tokio::sync::RwLock;
 
 use serde_derive::{Serialize, Deserialize};
 //use serde_json as json;
@@ -11,13 +13,64 @@ use serde_qs as qs;
 #[macro_use]
 extern crate lazy_static;
 
-use std::convert::From;
 use std::env;
+use std::convert::From;
 use std::default::Default;
 use std::sync::Arc;
+use std::time::Duration;
 
 trait ToFlattenedUrlString {
   fn to_flattened_url_string(&self) -> String;
+}
+
+struct AdminToken {
+  token_response: Option<TokenResponse>,
+  endpoint: String,
+  token_request: TokenRequest,
+  client: Client,
+}
+
+impl AdminToken {
+  fn new(
+    endpoint: String, token_request: TokenRequest, client: Client
+  ) -> AdminToken {
+    AdminToken{
+      token_response: None,
+      endpoint: endpoint,
+      token_request: token_request,
+      client: client
+    }
+  }
+
+  async fn get_token(&mut self) {
+    self.token_response = Some(self.client.post(&self.endpoint)
+      .header("Content-Type", "application/x-www-form-urlencoded")
+      .send_body(self.token_request.to_flattened_url_string())
+      .await
+      .unwrap()
+      .json()
+      .await
+      .unwrap());
+  }
+
+  fn expires_in(&self) -> Option<i64> {
+    let token_response = self.token_response.as_ref()?;
+    Some(token_response.expires_in)
+  }
+}
+
+impl Default for AdminToken {
+  fn default() -> Self {
+    let token_request = TokenRequest::from(
+      TokenRequestData::Admin(AdminTokenRequestData::default())
+    );
+
+    let client = Client::default();
+
+    AdminToken::new(
+      ADMIN_TOKEN_ENDPOINT.clone(), token_request, client
+    )
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -110,6 +163,14 @@ impl Default for AdminTokenRequestData {
   }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct TokenResponse {
+  access_token: String,
+  refresh_token: String,
+  expires_in: i64,
+  refresh_expires_in: i64,
+}
+
 async fn into_response(
   mut client_response: ClientResponse<dev::Decompress<dev::Payload>>
 ) -> HttpResponse {
@@ -129,7 +190,7 @@ async fn token(
 {
   let token_request = TokenRequest::from(body.into_inner());
 
-  into_response(client.post(format!("{}{}", *SERVER, TOKEN_ENDPOINT))
+  into_response(client.post(&*TOKEN_ENDPOINT)
     .header("Content-Type", "application/x-www-form-urlencoded")
     .send_body(token_request.to_flattened_url_string())
     .await
@@ -138,7 +199,7 @@ async fn token(
 
 #[get("/certs")]
 async fn certs(client: web::Data<Client>) -> impl Responder {
-  let response = client.get(format!("{}{}", SERVER.clone(), CERTS_ENDPOINT))
+  let response = client.get(&*CERTS_ENDPOINT)
     .send()
     .await;
 
@@ -154,7 +215,16 @@ async fn certs(client: web::Data<Client>) -> impl Responder {
 // TODO: register endpoint
 #[post("/register")]
 async fn register(client: web::Data<Client>) -> impl Responder {
-  // TODO: get access token (refresh in different thread all the time)
+
+  // pass json as to keycloak... receive something easier:
+  //
+  // { firstName:"...",
+  //   lasName:"...",
+  //   email:"...",
+  //   enabled:"...",
+  //   username:"...",
+  //   credentials:[{type:"password", value:"..."}]
+  // } ,
 
   // then here pass token in header as bearer
   "Unimplemented!"
@@ -163,89 +233,33 @@ async fn register(client: web::Data<Client>) -> impl Responder {
 lazy_static!{
   static ref CLIENT_ID: String = env::var("KEYCLOAK_PROXY_CLIENT_ID")
     .unwrap();
-  static ref SERVER: String = format!(
-    "http://{}:8080/auth/realms/{}/",
+  static ref ADMIN_CLI_SECRET: String =
+    env::var("KEYCLOAK_PROXY_ADMIN_CLI_SECRET").unwrap();
+  static ref CERTS_ENDPOINT: String = format!(
+    "http://{}:8080/auth/realms/{}/protocol/openid-connect/certs",
     env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap(),
     env::var("KEYCLOAK_PROXY_REALM").unwrap(),
   );
-  static ref ADMIN_CLI_SECRET: String =
-    env::var("KEYCLOAK_PROXY_ADMIN_CLI_SECRET").unwrap();
+  static ref TOKEN_ENDPOINT: String = format!(
+    "http://{}:8080/auth/realms/{}/protocol/openid-connect/token",
+    env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap(),
+    env::var("KEYCLOAK_PROXY_REALM").unwrap(),
+  );
+  static ref REGISTER_ENDPOINT: String = format!(
+    "http://{}:8080/auth/admin/realms/{}/users",
+    env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap(),
+    env::var("KEYCLOAK_PROXY_REALM").unwrap(),
+  );
+  static ref ADMIN_TOKEN_ENDPOINT: String = format!(
+    "http://{}:8080/auth/realms/master/protocol/openid-connect/token",
+    env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap(),
+  );
 }
 
 static ADMIN_CLI_CLIENT_ID: &'static str = "admin-cli";
-static CERTS_ENDPOINT: &'static str = "protocol/openid-connect/certs";
-static TOKEN_ENDPOINT: &'static str = "protocol/openid-connect/token";
-
-#[derive(Serialize, Deserialize, Debug)]
-struct TokenResponse {
-  access_token: String,
-  refresh_token: String,
-  expires_in: i64,
-  refresh_expires_in: i64,
-}
-
-use actix_rt::time;
-use std::time::Duration;
-
-use tokio::sync::RwLock;
-
-struct AdminToken {
-  token_response: Option<TokenResponse>,
-  endpoint: String,
-  token_request: TokenRequest,
-  client: Client,
-}
-
-impl AdminToken {
-  fn new(
-    endpoint: String, token_request: TokenRequest, client: Client
-  ) -> AdminToken {
-    AdminToken{
-      token_response: None,
-      endpoint: endpoint,
-      token_request: token_request,
-      client: client
-    }
-  }
-
-  async fn get_token(&mut self) {
-    self.token_response = Some(self.client.post(&self.endpoint)
-      .header("Content-Type", "application/x-www-form-urlencoded")
-      .send_body(self.token_request.to_flattened_url_string())
-      .await
-      .unwrap()
-      .json()
-      .await
-      .unwrap());
-  }
-
-  fn expires_in(&self) -> Option<i64> {
-    let token_response = self.token_response.as_ref()?;
-    Some(token_response.expires_in)
-  }
-}
-
-impl Default for AdminToken {
-  fn default() -> Self {
-    let endpoint = format!(
-      "http://{}:8080/auth/realms/master/protocol/openid-connect/token",
-      env::var("KEYCLOAK_PROXY_KEYCLOAK_SERVER").unwrap()
-    );
-
-    let token_request = TokenRequest::from(
-      TokenRequestData::Admin(AdminTokenRequestData::default())
-    );
-
-    let client = Client::default();
-
-    AdminToken::new(endpoint, token_request, client)
-  }
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-  println!("STARTING KEYCLOAK_PROXY SERVER");
-
   let port = env::var("KEYCLOAK_PROXY_PORT").unwrap();
   let addr = format!("0.0.0.0:{}", port);
 
@@ -273,18 +287,11 @@ async fn main() -> std::io::Result<()> {
         admin_token_for_refresh.write().await;
 
       admin_token_inner.get_token().await;
+      println!("successfully refreshed admin token");
     }
   });
 
-  let admin_token_for_test = admin_token.clone();
-  actix_rt::spawn(async move {
-    let mut i = 0;
-    loop {
-      let admin_token_inner = admin_token_for_test.read().await;
-      println!("i: {}", i);
-      i += 1;
-    }
-  });
+  println!("STARTING KEYCLOAK_PROXY SERVER");
 
   HttpServer::new(move || {
     App::new()
