@@ -384,6 +384,7 @@ class LoginScreen extends StatelessWidget {
   @override
   void dispose() {
     focusNode.dispose();
+    passwordFieldFocusNode.dispose();
     usernameController.dispose();
     passwordController.dispose();
   }
@@ -554,12 +555,164 @@ class LoginScreen extends StatelessWidget {
 }
 
 class RegisterScreen extends StatelessWidget {
+  final focusNode = FocusNode();
+  final passwordFieldFocusNode = FocusNode();
+
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    focusNode.dispose();
+    passwordFieldFocusNode.dispose();
+    usernameController.dispose();
+    passwordController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Text("Hello"),
+      body: RawKeyboardListener(
+        focusNode: focusNode,
+        autofocus: true,
+        onKey: (RawKeyEvent event) {
+          if (focusNode.hasPrimaryFocus &&
+              event.logicalKey == LogicalKeyboardKey.enter &&
+              event.runtimeType == RawKeyUpEvent)
+            submit();
+        },
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: 400
+            ),
+            child: Column(
+              children: <Widget>[
+                /*
+                Obx(() {
+                  switch (exception) {
+                    case AuthExceptionCause.unauthorized:
+                      return _renderException(
+                        "Incorrect username or password"
+                      );
+                    case AuthExceptionCause.networkError:
+                      return _renderException(
+                        "Oops, something went wrong with the " +
+                        "connection. Please try again."
+                      );
+                    default:
+                      return Container();
+                  }
+                }),
+                */
+                Container(
+                  constraints: BoxConstraints(
+                    maxHeight:350,
+                  ),
+                  // TODO: connect with controllers and focus nodes
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Column(
+                        children: <Widget>[
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: EdgeInsets.only(bottom:10.0),
+                              child: Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    flex:1,
+                                    child: TextField(
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(),
+                                        labelText: "First name",
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 5.0),
+                                    )
+                                  ),
+                                  Expanded(
+                                    flex: 1,
+                                    child: TextField(
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(),
+                                        labelText: "Last name",
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              controller: usernameController,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "Username",
+                              ),
+                              onSubmitted: (_) => passwordFieldFocusNode.requestFocus(),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              controller: usernameController,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "Email",
+                              ),
+                              onSubmitted: (_) => passwordFieldFocusNode.requestFocus(),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              focusNode: passwordFieldFocusNode,
+                              controller: passwordController,
+                              obscureText: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "Password",
+                              ),
+                              onSubmitted: (_) => submit(),
+                            ),
+                          ),
+                          Flexible(
+                            flex: 1,
+                            child: Row(
+                              children: <Widget> [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: submit,
+                                    child: Text("Register"),
+                                    style: ButtonStyle(
+                                      backgroundColor: MaterialStateProperty.all<Color>(Colors.green),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
+
+  submit() {}
 }
 
 class LoadingScreen extends StatelessWidget {
@@ -983,6 +1136,7 @@ class AuthException {
   AuthExceptionCause cause;
   String message;
 
+  // TODO: messages for users
   AuthException.unauthorized() :
     this.cause = AuthExceptionCause.unauthorized,
     this.message = "Auth server has returned a 401 status code";
