@@ -388,6 +388,25 @@ class LoginScreen extends StatelessWidget {
     passwordController.dispose();
   }
 
+  Widget _renderException(String msg) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
+      ),
+      color: Color(0xFFFFE3E6),
+      child: ListTile(
+        title: Text(msg),
+        trailing: TextButton(
+          onPressed: () => exception = null,
+          child: Icon(
+            Icons.clear,
+            color: Color.fromARGB(154, 158, 28, 35),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -408,41 +427,15 @@ class LoginScreen extends StatelessWidget {
             child: Column(
               children: <Widget>[
                 Obx(() {
-                  // TODO: abstract this
                   switch (exception) {
                     case AuthExceptionCause.unauthorized:
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
-                        ),
-                        color: Color(0xFFFFE3E6),
-                        child: ListTile(
-                          title: Text("Incorrect username or password."),
-                          trailing: TextButton(
-                            onPressed: () => exception = null,
-                            child: Icon(
-                              Icons.clear,
-                              color: Color.fromARGB(154, 158, 28, 35),
-                            ),
-                          ),
-                        ),
+                      return _renderException(
+                        "Incorrect username or password"
                       );
                     case AuthExceptionCause.networkError:
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
-                        ),
-                        color: Color(0xFFFFE3E6),
-                        child: ListTile(
-                          title: Text("Oops, something went wrong with the connection. Please try again."),
-                          trailing: TextButton(
-                            onPressed: () => exception = null,
-                            child: Icon(
-                              Icons.clear,
-                              color: Color.fromARGB(154, 158, 28, 35),
-                            ),
-                          ),
-                        ),
+                      return _renderException(
+                        "Oops, something went wrong with the " +
+                        "connection. Please try again."
                       );
                     default:
                       return Container();
