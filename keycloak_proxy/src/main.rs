@@ -3,6 +3,7 @@ use actix_web::{get, post, web, dev, App, HttpResponse, HttpServer,
 use actix_web::client::{Client, ClientResponse};
 use actix_cors::Cors;
 use actix_rt::time;
+use actix_web_httpauth::headers::authorization::Bearer;
 
 use tokio::sync::RwLock;
 
@@ -53,6 +54,11 @@ impl AdminToken {
   fn expires_in(&self) -> Option<i64> {
     let token_response = self.token_response.as_ref()?;
     Some(token_response.expires_in)
+  }
+
+  fn access_token(&self) -> Option<String> {
+    let token_response = self.token_response.as_ref()?;
+    Some(token_response.access_token.clone())
   }
 }
 
@@ -223,7 +229,10 @@ struct Credentials {
 
 // TODO: register endpoint
 #[post("/register")]
-async fn register(client: web::Data<Client>) -> impl Responder {
+async fn register(
+  client: web::Data<Client>,
+  admin_token: web::Data<Arc<RwLock<AdminToken>>>) -> impl Responder
+{
   let new_user = RegisterRequest{
     firstName: String::from("test"),
     lastName: String::from("test"),
@@ -238,14 +247,23 @@ async fn register(client: web::Data<Client>) -> impl Responder {
     ]
   };
 
-  let mut response = client.get(&*REGISTER_ENDPOINT)
+  let access_token = admin_token.read().await.access_token().unwrap();
+  let access_token = Bearer::new(access_token);
+
+  let req = client.post(&*REGISTER_ENDPOINT)
     .header("Content-Type", "application/json")
-    //.header("Authorization", format!("Bearer {}", ))
+    .header("Authorization", access_token);
+
+  println!("{:?}", req);
+
+  let mut response = req
     .send_json(&new_user)
     .await
     .unwrap();
 
   println!("{:?}", new_user);
+  println!("{:?}", response);
+  println!("{:?}", response.body().await.unwrap());
 
   // pass json as to keycloak... receive something easier:
   //
