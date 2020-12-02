@@ -212,9 +212,48 @@ async fn certs(client: web::Data<Client>) -> impl Responder {
   }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+struct RegisterRequest {
+  firstName: String,
+  lastName: String,
+  email: String,
+  enabled: bool,
+  username: String,
+  credentials: Vec<Credentials>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Credentials {
+  r#type: String,
+  value: String,
+}
+
 // TODO: register endpoint
 #[post("/register")]
 async fn register(client: web::Data<Client>) -> impl Responder {
+  let new_user = RegisterRequest{
+    firstName: String::from("test"),
+    lastName: String::from("test"),
+    email: String::from("jonas@fassbender.dev"),
+    enabled: true,
+    username: String::from("test"),
+    credentials: vec![
+      Credentials{
+        r#type: String::from("password"),
+        value: String::from("test"),
+      },
+    ]
+  };
+
+  let mut response = client.get(&*REGISTER_ENDPOINT)
+    .header("Content-Type", "application/json")
+    //.header("Authorization", format!("Bearer {}", ))
+    .send_json(&new_user)
+    .await
+    .unwrap();
+
+  println!("{:?}", new_user);
 
   // pass json as to keycloak... receive something easier:
   //
@@ -258,6 +297,25 @@ lazy_static!{
 
 static ADMIN_CLI_CLIENT_ID: &'static str = "admin-cli";
 
+fn spawn_task_for_periodically_refreshing_admin_token(
+  admin_token: Arc<RwLock<AdminToken>>
+) {
+  actix_rt::spawn(async move {
+    loop {
+      let delay = {
+        let expires_in = admin_token.read().await.expires_in()
+          .unwrap() as f64;
+
+        Duration::from_secs_f64(expires_in * 0.98)
+      };
+
+      time::delay_for(delay).await;
+      admin_token.write().await.get_token().await;
+      println!("successfully refreshed admin token");
+    }
+  });
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   let port = env::var("KEYCLOAK_PROXY_PORT").unwrap();
@@ -269,27 +327,9 @@ async fn main() -> std::io::Result<()> {
   let admin_token: Arc<RwLock<AdminToken>> =
     Arc::new(RwLock::new(admin_token));
 
-  let admin_token_for_refresh = admin_token.clone();
-  actix_rt::spawn(async move {
-    loop {
-      let delay = {
-        let expires_in = admin_token_for_refresh.read()
-          .await
-          .expires_in()
-          .unwrap() as f64;
-
-        Duration::from_secs_f64(expires_in * 0.98)
-      };
-
-      time::delay_for(delay).await;
-
-      let mut admin_token_inner =
-        admin_token_for_refresh.write().await;
-
-      admin_token_inner.get_token().await;
-      println!("successfully refreshed admin token");
-    }
-  });
+  spawn_task_for_periodically_refreshing_admin_token(
+    admin_token.clone()
+  );
 
   println!("STARTING KEYCLOAK_PROXY SERVER");
 
