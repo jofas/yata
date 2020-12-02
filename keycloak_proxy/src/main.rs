@@ -27,23 +27,20 @@ struct AdminToken {
   token_response: Option<TokenResponse>,
   endpoint: String,
   token_request: TokenRequest,
-  client: Client,
 }
 
 impl AdminToken {
-  fn new(
-    endpoint: String, token_request: TokenRequest, client: Client
-  ) -> AdminToken {
-    AdminToken{
+  fn new(endpoint: String, token_request: TokenRequest) -> AdminToken
+  {
+    AdminToken {
       token_response: None,
       endpoint: endpoint,
       token_request: token_request,
-      client: client
     }
   }
 
-  async fn get_token(&mut self) {
-    self.token_response = Some(self.client.post(&self.endpoint)
+  async fn get_token(&mut self, client: &Client) {
+    self.token_response = Some(client.post(&self.endpoint)
       .header("Content-Type", "application/x-www-form-urlencoded")
       .send_body(self.token_request.to_flattened_url_string())
       .await
@@ -64,12 +61,7 @@ impl Default for AdminToken {
     let token_request = TokenRequest::from(
       TokenRequestData::Admin(AdminTokenRequestData::default())
     );
-
-    let client = Client::default();
-
-    AdminToken::new(
-      ADMIN_TOKEN_ENDPOINT.clone(), token_request, client
-    )
+    AdminToken::new(ADMIN_TOKEN_ENDPOINT.clone(), token_request)
   }
 }
 
@@ -301,17 +293,17 @@ fn spawn_task_for_periodically_refreshing_admin_token(
   admin_token: Arc<RwLock<AdminToken>>
 ) {
   actix_rt::spawn(async move {
+    let client = Client::default();
     loop {
-      let delay = {
+      admin_token.write().await.get_token(&client).await;
+      println!("successfully refreshed admin token");
+
+      time::delay_for({
         let expires_in = admin_token.read().await.expires_in()
           .unwrap() as f64;
 
         Duration::from_secs_f64(expires_in * 0.98)
-      };
-
-      time::delay_for(delay).await;
-      admin_token.write().await.get_token().await;
-      println!("successfully refreshed admin token");
+      }).await;
     }
   });
 }
@@ -321,11 +313,8 @@ async fn main() -> std::io::Result<()> {
   let port = env::var("KEYCLOAK_PROXY_PORT").unwrap();
   let addr = format!("0.0.0.0:{}", port);
 
-  let mut admin_token = AdminToken::default();
-  admin_token.get_token().await;
-
   let admin_token: Arc<RwLock<AdminToken>> =
-    Arc::new(RwLock::new(admin_token));
+    Arc::new(RwLock::new(AdminToken::default()));
 
   spawn_task_for_periodically_refreshing_admin_token(
     admin_token.clone()
@@ -336,6 +325,7 @@ async fn main() -> std::io::Result<()> {
   HttpServer::new(move || {
     App::new()
       .data(Client::default())
+      .data(admin_token.clone())
       .wrap(Cors::permissive()) // TODO: only yata_frontend
       /*
       .wrap_fn(|req, srv| {
