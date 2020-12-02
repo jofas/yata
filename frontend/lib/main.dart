@@ -60,6 +60,7 @@ class YataBaseScreen extends StatelessWidget {
 
       if (!authController.isAuthenticated)
         return LoginScreen(); // TODO: toNamed and all
+        // on successful authentication I need to reload
 
       if (!elementsController.hasLoaded) {
         elementsController.load();
@@ -226,7 +227,7 @@ class YataDoneScreen extends StatelessWidget {
 }
 
 class YataContentScreen extends StatelessWidget {
-  final ElementsController controller = ElementsController.findOrCreate();
+  final ElementsController elementsController = ElementsController.findOrCreate();
   final AuthController authController = AuthController.findOrCreate();
 
   final _scrollController = ScrollController();
@@ -281,6 +282,7 @@ class YataContentScreen extends StatelessWidget {
                       onPressed: () {
                         Get.back();
                         authController.logout();
+                        elementsController.reset();
                       },
                       child: const Text("logout"),
                     )
@@ -303,7 +305,7 @@ class YataContentScreen extends StatelessWidget {
             ),
             Expanded(
               child: Obx(() {
-                var items = controller.getList(elementsList);
+                var items = elementsController.getList(elementsList);
                 var len = items.length;
 
                 return len == 0 ? Center(child: Text(defaultText)) : Scrollbar(
@@ -785,6 +787,19 @@ class ElementsController extends YataController {
     } finally {
       hasLoaded = true;
     }
+  }
+
+  reset() {
+    _todos.value.clear();
+    _todos.refresh();
+
+    _done.value.clear();
+    _done.refresh();
+
+    _deleted.value.clear();
+    _deleted.refresh();
+
+    hasLoaded = false;
   }
 
   _setElementsFromJsonString(String jsonString) {
