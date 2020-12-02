@@ -169,6 +169,50 @@ struct TokenResponse {
   refresh_expires_in: i64,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+struct RegisterRequest {
+  firstName: String,
+  lastName: String,
+  email: String,
+  enabled: bool,
+  username: String,
+  credentials: Vec<Credentials>,
+}
+
+impl From<ProxyRegisterRequest> for RegisterRequest {
+  fn from(proxy: ProxyRegisterRequest) -> RegisterRequest {
+    RegisterRequest {
+      firstName: proxy.first_name,
+      lastName: proxy.last_name,
+      email: proxy.email,
+      enabled: true,
+      username: proxy.username,
+      credentials: vec![
+        Credentials {
+          r#type: String::from("password"),
+          value: proxy.password,
+        }
+      ],
+    }
+  }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Credentials {
+  r#type: String,
+  value: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ProxyRegisterRequest {
+  first_name: String,
+  last_name: String,
+  email: String,
+  username: String,
+  password: String,
+}
+
 async fn into_response(
   mut client_response: ClientResponse<dev::Decompress<dev::Payload>>
 ) -> HttpResponse {
@@ -204,79 +248,30 @@ async fn certs(client: web::Data<Client>) -> impl Responder {
   match response {
     Ok(response) => into_response(response).await,
     Err(e) => {
-      println!("{:?}", e);
+      eprintln!("{:?}", e);
       HttpResponse::InternalServerError().finish()
     }
   }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[allow(non_snake_case)]
-struct RegisterRequest {
-  firstName: String,
-  lastName: String,
-  email: String,
-  enabled: bool,
-  username: String,
-  credentials: Vec<Credentials>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Credentials {
-  r#type: String,
-  value: String,
-}
-
-// TODO: register endpoint
 #[post("/register")]
 async fn register(
   client: web::Data<Client>,
-  admin_token: web::Data<Arc<RwLock<AdminToken>>>) -> impl Responder
-{
-  let new_user = RegisterRequest{
-    firstName: String::from("test"),
-    lastName: String::from("test"),
-    email: String::from("jonas@fassbender.dev"),
-    enabled: true,
-    username: String::from("test"),
-    credentials: vec![
-      Credentials{
-        r#type: String::from("password"),
-        value: String::from("test"),
-      },
-    ]
-  };
+  admin_token: web::Data<Arc<RwLock<AdminToken>>>,
+  registration_data: web::Json<ProxyRegisterRequest>,
+) -> impl Responder {
+  let registration =
+    RegisterRequest::from(registration_data.into_inner());
 
   let access_token = admin_token.read().await.access_token().unwrap();
   let access_token = Bearer::new(access_token);
 
-  let req = client.post(&*REGISTER_ENDPOINT)
+  into_response(client.post(&*REGISTER_ENDPOINT)
     .header("Content-Type", "application/json")
-    .header("Authorization", access_token);
-
-  println!("{:?}", req);
-
-  let mut response = req
-    .send_json(&new_user)
+    .header("Authorization", access_token)
+    .send_json(&registration)
     .await
-    .unwrap();
-
-  println!("{:?}", new_user);
-  println!("{:?}", response);
-  println!("{:?}", response.body().await.unwrap());
-
-  // pass json as to keycloak... receive something easier:
-  //
-  // { firstName:"...",
-  //   lasName:"...",
-  //   email:"...",
-  //   enabled:"...",
-  //   username:"...",
-  //   credentials:[{type:"password", value:"..."}]
-  // } ,
-
-  // then here pass token in header as bearer
-  "Unimplemented!"
+    .unwrap()).await
 }
 
 lazy_static!{
