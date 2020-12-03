@@ -571,6 +571,8 @@ class RegisterScreen extends StatelessWidget {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  final client = http.Client();
+
   @override
   void dispose() {
     focusNode.dispose();
@@ -736,13 +738,29 @@ class RegisterScreen extends StatelessWidget {
     );
   }
 
-  submit() {
-    // make post request to register endpoint
-    print("firstName: ${firstNameController.text}");
-    print("lastName: ${lastNameController.text}");
-    print("username: ${usernameController.text}");
-    print("email: ${emailController.text}");
-    print("password: ${passwordController.text}");
+  submit() async {
+    var registerRequestData = {
+      "first_name": firstNameController.text,
+      "last_name": lastNameController.text,
+      "username": usernameController.text,
+      "email": emailController.text,
+      "password": passwordController.text,
+    };
+
+    var response = await client.post(
+      "http://localhost:9998/register",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: json.encode(registerRequestData),
+    );
+    // TODO: onChanged for email and username and password
+    //       which check
+    print(response.statusCode);
+    print(response.body);
+
+    // if response.statusCode == 201 -> validate email view
+
 
     focusNode.requestFocus();
   }
