@@ -389,25 +389,6 @@ class LoginScreen extends StatelessWidget {
     passwordController.dispose();
   }
 
-  Widget _renderException(String msg) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
-      ),
-      color: Color(0xFFFFE3E6),
-      child: ListTile(
-        title: Text(msg),
-        trailing: TextButton(
-          onPressed: () => exception = null,
-          child: Icon(
-            Icons.clear,
-            color: Color.fromARGB(154, 158, 28, 35),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -551,21 +532,58 @@ class LoginScreen extends StatelessWidget {
     } catch (e) {
       exception = e.cause;
     }
+
+    focusNode.requestFocus();
+  }
+
+  Widget _renderException(String msg) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Color.fromARGB(52, 158, 28, 35)),
+      ),
+      color: Color(0xFFFFE3E6),
+      child: ListTile(
+        title: Text(msg),
+        trailing: TextButton(
+          onPressed: () => exception = null,
+          child: Icon(
+            Icons.clear,
+            color: Color.fromARGB(154, 158, 28, 35),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class RegisterScreen extends StatelessWidget {
   final focusNode = FocusNode();
-  final passwordFieldFocusNode = FocusNode();
 
+  final lastNameFocusNode = FocusNode();
+  final usernameFocusNode = FocusNode();
+  final emailFocusNode = FocusNode();
+  final passwordFocusNode = FocusNode();
+
+
+  final firstNameController = TextEditingController();
+  final lastNameController = TextEditingController();
   final usernameController = TextEditingController();
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   @override
   void dispose() {
     focusNode.dispose();
-    passwordFieldFocusNode.dispose();
+
+    lastNameFocusNode.dispose();
+    usernameFocusNode.dispose();
+    emailFocusNode.dispose();
+    passwordFocusNode.dispose();
+
+    firstNameController.dispose();
+    lastNameController.dispose();
     usernameController.dispose();
+    emailController.dispose();
     passwordController.dispose();
   }
 
@@ -609,7 +627,6 @@ class RegisterScreen extends StatelessWidget {
                   constraints: BoxConstraints(
                     maxHeight:350,
                   ),
-                  // TODO: connect with controllers and focus nodes
                   child: Card(
                     child: Padding(
                       padding: EdgeInsets.all(10.0),
@@ -624,10 +641,12 @@ class RegisterScreen extends StatelessWidget {
                                   Expanded(
                                     flex:1,
                                     child: TextField(
+                                      controller: firstNameController,
                                       decoration: InputDecoration(
                                         border: OutlineInputBorder(),
                                         labelText: "First name",
                                       ),
+                                      onSubmitted: (_) => lastNameFocusNode.requestFocus(),
                                     ),
                                   ),
                                   Container(
@@ -638,10 +657,13 @@ class RegisterScreen extends StatelessWidget {
                                   Expanded(
                                     flex: 1,
                                     child: TextField(
+                                      focusNode: lastNameFocusNode,
+                                      controller: lastNameController,
                                       decoration: InputDecoration(
                                         border: OutlineInputBorder(),
                                         labelText: "Last name",
                                       ),
+                                      onSubmitted: (_) => usernameFocusNode.requestFocus(),
                                     ),
                                   ),
                                 ],
@@ -651,29 +673,31 @@ class RegisterScreen extends StatelessWidget {
                           Expanded(
                             flex: 2,
                             child: TextField(
+                              focusNode: usernameFocusNode,
                               controller: usernameController,
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(),
                                 labelText: "Username",
                               ),
-                              onSubmitted: (_) => passwordFieldFocusNode.requestFocus(),
+                              onSubmitted: (_) => emailFocusNode.requestFocus(),
                             ),
                           ),
                           Expanded(
                             flex: 2,
                             child: TextField(
-                              controller: usernameController,
+                              focusNode: emailFocusNode,
+                              controller: emailController,
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(),
                                 labelText: "Email",
                               ),
-                              onSubmitted: (_) => passwordFieldFocusNode.requestFocus(),
+                              onSubmitted: (_) => passwordFocusNode.requestFocus(),
                             ),
                           ),
                           Expanded(
                             flex: 2,
                             child: TextField(
-                              focusNode: passwordFieldFocusNode,
+                              focusNode: passwordFocusNode,
                               controller: passwordController,
                               obscureText: true,
                               decoration: InputDecoration(
@@ -712,7 +736,16 @@ class RegisterScreen extends StatelessWidget {
     );
   }
 
-  submit() {}
+  submit() {
+    // make post request to register endpoint
+    print("firstName: ${firstNameController.text}");
+    print("lastName: ${lastNameController.text}");
+    print("username: ${usernameController.text}");
+    print("email: ${emailController.text}");
+    print("password: ${passwordController.text}");
+
+    focusNode.requestFocus();
+  }
 }
 
 class LoadingScreen extends StatelessWidget {

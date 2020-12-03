@@ -208,8 +208,8 @@ struct Credentials {
 struct ProxyRegisterRequest {
   first_name: String,
   last_name: String,
-  email: String,
   username: String,
+  email: String,
   password: String,
 }
 
