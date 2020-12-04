@@ -15,121 +15,27 @@ use actix_cors::Cors;
 use jwks_client::keyset::KeyStore;
 use jwks_client::error::Error as JWTError;
 
-use serde_derive::{Serialize, Deserialize};
-
 use mongodb::{Client, Collection};
 use mongodb::options::ClientOptions;
 use mongodb::error::Result as MDBResult;
-use mongodb::bson::{doc, Document};
-use mongodb::bson::{to_bson, from_bson};
+use mongodb::bson::{doc, to_bson};
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::document::ValueAccessError;
-use mongodb::bson::de::Error as BsonDeserializationError;
-use mongodb::bson::ser::Error as BsonSerializationError;
 
 use futures::stream::StreamExt;
-
-use chrono::DateTime;
-use chrono::offset::Utc;
 
 #[macro_use]
 extern crate partial_application;
 
 use std::sync::Arc;
-use std::convert::{From, TryFrom};
 use std::env;
-use std::option::NoneError;
+use std::convert::TryFrom;
 
+use yata_api::*;
+use yata_api::inputs::{SingleContent, SingleStatus};
+use yata_api::elements::{Element, ElementStatus};
 // TODO: impl Responder -> Result with proper error
-
-#[derive(Debug)]
-enum ParseDocumentError {
-  NotPresent,
-  UnexpectedType,
-  BsonDeserializationError(BsonDeserializationError),
-  BsonSerializationError(BsonSerializationError),
-  Impossible
-}
-
-impl From<NoneError> for ParseDocumentError {
-  fn from(_: NoneError) -> Self {
-    ParseDocumentError::NotPresent
-  }
-}
-
-impl From<ValueAccessError> for ParseDocumentError {
-  fn from(e: ValueAccessError) -> Self {
-    match e {
-      ValueAccessError::NotPresent =>
-        ParseDocumentError::NotPresent,
-      ValueAccessError::UnexpectedType =>
-        ParseDocumentError::UnexpectedType,
-      _ => ParseDocumentError::Impossible,
-    }
-  }
-}
-
-impl From<BsonDeserializationError> for ParseDocumentError {
-  fn from(e: BsonDeserializationError) -> Self {
-    ParseDocumentError::BsonDeserializationError(e)
-  }
-}
-
-impl From<BsonSerializationError> for ParseDocumentError {
-  fn from(e: BsonSerializationError) -> Self {
-    ParseDocumentError::BsonSerializationError(e)
-  }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-enum ElementStatus { Todo, Done, Deleted }
-
 // TODO: created -> last modified?
 // TODO: timestamp in id -> no extra field created necessary
-#[derive(Serialize, Deserialize, Debug)]
-struct Element {
-  id: String,
-  content: String,
-  status: ElementStatus,
-  created: DateTime<Utc>,
-}
-
-impl TryFrom<Document> for Element {
-  type Error = ParseDocumentError;
-
-  fn try_from(doc: Document) -> Result<Self, Self::Error> {
-    let id = doc.get_object_id("_id")?.to_hex();
-    let content = String::from(doc.get_str("content")?);
-    let status: ElementStatus =
-      from_bson(doc.get("status")?.clone())?;
-    let created = *doc.get_datetime("created")?;
-
-    Ok(Element{
-      id: id, content: content, status: status, created: created
-    })
-  }
-}
-
-#[derive(Deserialize)]
-struct SingleContent {
-  content: String,
-}
-
-#[derive(Deserialize)]
-struct SingleStatus {
-  status: ElementStatus,
-}
-
-fn to_mongodb_entry(c: SingleContent, user: String)
-  -> Result<Document, ParseDocumentError>
-{
-  Ok(doc! {
-    "user": user,
-    "content": c.content,
-    "status": to_bson(&ElementStatus::Todo)?,
-    "created": Utc::now(),
-  })
-}
 
 #[get("/{user}")]
 async fn get_elements(
@@ -311,6 +217,10 @@ async fn main() -> std::io::Result<()> {
 mod tests {
   use super::*;
 
+  use chrono::offset::Utc;
+
+  use yata_api::errors::ParseDocumentError;
+
   #[test]
   fn test_to_mongodb_entry() -> Result<(), ParseDocumentError> {
     let c = SingleContent{content: String::from("some content")};
@@ -331,7 +241,7 @@ mod tests {
       "created": Utc::now()
     };
 
-    let element = Element::try_from(doc)?;
+    Element::try_from(doc)?;
     Ok(())
   }
 }
