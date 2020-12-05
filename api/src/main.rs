@@ -21,6 +21,8 @@ use std::env;
 use yata_api::middlewares::auth;
 use yata_api::routes::*;
 
+//use yata_api::apps::App;
+
 // TODO: impl Responder -> Result with proper error
 // TODO: created -> last modified?
 // TODO: timestamp in id -> no extra field created necessary
@@ -53,10 +55,12 @@ async fn main() -> std::io::Result<()> {
     env::var("YATA_API_KEYCLOAK_PROXY_PORT").unwrap(),
   );
   println!("getting keystore from: {}", url);
-  let key_set = Arc::new(KeyStore::new_from(&url).await.unwrap());
-  let auth_fn = partial!(move auth => _, _, key_set.clone());
 
+  let key_set = Arc::new(KeyStore::new_from(&url).await.unwrap());
   HttpServer::new(move || {
+    let key_set2 = key_set.clone();
+    let auth_fn = partial!(move auth => _, _, key_set2.clone());
+
     App::new()
       .data(collection.clone())
       .wrap(HttpAuthentication::bearer(auth_fn.clone()))

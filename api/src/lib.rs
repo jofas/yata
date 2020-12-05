@@ -4,6 +4,7 @@ use mongodb::bson::{Document, doc, to_bson};
 
 use chrono::offset::Utc;
 
+pub mod apps;
 pub mod errors;
 pub mod inputs;
 pub mod elements;
