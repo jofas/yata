@@ -5,8 +5,6 @@ use mongodb::bson::ser::Error as BsonSerializationError;
 use std::convert::From;
 use std::option::NoneError;
 
-// TODO: impl Responder -> Result with proper error
-
 #[derive(Debug)]
 pub enum ParseDocumentError {
   NotPresent,
